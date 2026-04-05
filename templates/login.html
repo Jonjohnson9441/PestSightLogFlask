@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Sign In — PestSightLog{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+
+    <div class="auth-header">
+      <div class="auth-icon">&#x26E8;</div>
+      <h1>PestSightLog</h1>
+      <p>Food Safety Pest Reporting</p>
+    </div>
+
+    <div class="auth-body">
+      <form method="POST" action="{{ url_for('login') }}">
+
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username"
+                 placeholder="Enter your username"
+                 autocomplete="username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password"
+                 placeholder="Enter your password"
+                 autocomplete="current-password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

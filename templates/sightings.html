@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Sightings — PestSightLog{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Pest Sightings</h2>
+    <p>{{ sightings|length }} record{{ '' if sightings|length == 1 else 's' }}
+       {% if not current_user.is_admin %} (your reports only){% endif %}
+       {% if search %} matching "{{ search }}"{% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('report') }}" class="btn btn-primary">+ Report Sighting</a>
+</div>
+
+<!-- Search / Filter bar -->
+<form method="GET" action="{{ url_for('sightings') }}" class="search-bar">
+  <input type="text" name="search" value="{{ search }}"
+         placeholder="Search by location, pest type, description, or reporter...">
+  <button type="submit" class="btn btn-primary">Search</button>
+  {% if search %}
+  <a href="{{ url_for('sightings') }}" class="btn btn-secondary">Clear</a>
+  {% endif %}
+</form>
+
+{% if sightings %}
+<div class="table-wrapper">
+  <table class="sightings-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Date</th>
+        <th>Pest Type</th>
+        <th>Location</th>
+        <th>Reported By</th>
+        <th>Description</th>
+        <th>Logged At</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sightings %}
+      <tr>
+        <td class="muted">{{ s.id }}</td>
+        <td>{{ s.date }}</td>
+        <td><span class="pest-badge">{{ s.pest_type }}</span></td>
+        <td>{{ s.location }}</td>
+        <td>{{ s.reported_by_name }}</td>
+        <td class="description-cell">{{ s.description or '—' }}</td>
+        <td class="muted">{{ s.created_at.strftime('%b %d, %Y %I:%M %p') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">&#128269;</div>
+  <h3>No sightings found</h3>
+  {% if search %}
+  <p>No results for "{{ search }}". <a href="{{ url_for('sightings') }}">Clear the search</a> to see all records.</p>
+  {% else %}
+  <p>No sightings have been reported yet. <a href="{{ url_for('report') }}">Submit the first one.</a></p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

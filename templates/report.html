@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Report a Sighting — PestSightLog{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Report a Pest Sighting</h2>
+  <p>Fill in the details below. All fields marked * are required.</p>
+</div>
+
+<div class="form-card">
+  <form method="POST" action="{{ url_for('report') }}">
+
+    <div class="form-row">
+
+      <div class="form-group">
+        <label for="date">Date *</label>
+        <input type="date" id="date" name="date" value="{{ today }}" required>
+      </div>
+
+      <div class="form-group">
+        <label for="reported_by">Reported By *</label>
+        <input type="text" id="reported_by" name="reported_by"
+               value="{{ current_user.username }}"
+               placeholder="Full name or username" required>
+      </div>
+
+    </div>
+
+    <div class="form-row">
+
+      <div class="form-group">
+        <label for="location">Location *</label>
+        <input type="text" id="location" name="location"
+               list="location-options"
+               placeholder="e.g. Production Floor, Warehouse..."
+               required>
+        <datalist id="location-options">
+          <option value="Production Floor">
+          <option value="Warehouse / Storage">
+          <option value="Break Room">
+          <option value="Restrooms">
+          <option value="Loading / Receiving Dock">
+          <option value="Office Area">
+          <option value="Packaging Area">
+          <option value="Ingredient Storage">
+          <option value="Exterior / Parking Lot">
+        </datalist>
+      </div>
+
+      <div class="form-group">
+        <label for="pest_type">Pest Type *</label>
+        <input type="text" id="pest_type" name="pest_type"
+               list="pest-options"
+               placeholder="e.g. Rodent, Fly, Cockroach..."
+               required>
+        <datalist id="pest-options">
+          <option value="Rodent (Mouse/Rat)">
+          <option value="Cockroach">
+          <option value="Fly">
+          <option value="Ant">
+          <option value="Wasp / Bee">
+          <option value="Spider">
+          <option value="Bird">
+          <option value="Stored Product Pest">
+          <option value="Other">
+        </datalist>
+      </div>
+
+    </div>
+
+    <div class="form-group">
+      <label for="description">Description <span class="optional">(optional)</span></label>
+      <textarea id="description" name="description" rows="4"
+                placeholder="Describe what you saw — number of pests, exact location, any other details..."></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Submit Sighting Report</button>
+      <a href="{{ url_for('sightings') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

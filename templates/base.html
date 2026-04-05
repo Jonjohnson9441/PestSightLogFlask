@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PestSightLog{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  {% if current_user.is_authenticated %}
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span class="nav-logo">&#x26E8;</span>
+      PestSightLog
+    </div>
+    <div class="nav-links">
+      <a href="{{ url_for('sightings') }}" class="{{ 'active' if request.endpoint == 'sightings' }}">View Sightings</a>
+      <a href="{{ url_for('report') }}" class="{{ 'active' if request.endpoint == 'report' }}">Report Sighting</a>
+      {% if current_user.is_admin %}
+      <a href="{{ url_for('manage_users') }}" class="{{ 'active' if request.endpoint == 'manage_users' }}">Manage Users</a>
+      {% endif %}
+      <span class="nav-user">{{ current_user.username }}{% if current_user.is_admin %} &middot; Admin{% endif %}</span>
+      <a href="{{ url_for('logout') }}" class="nav-logout">Sign Out</a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="container">
+
+    <!-- Flash messages (success/error notifications) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+  </div>
+
+</body>
+</html>
