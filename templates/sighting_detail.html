@@ -32,6 +32,11 @@
     <div class="form-card" style="margin-bottom:16px">
       <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">Report Details</h3>
       <div class="detail-field"><span class="detail-label">Reported By</span><span>{{ sighting.reported_by_name }}</span></div>
+      {% if sighting.reporter_email %}
+      <div class="detail-field"><span class="detail-label">Email</span>
+        <a href="mailto:{{ sighting.reporter_email }}" style="color:#0a4d2c">{{ sighting.reporter_email }}</a>
+      </div>
+      {% endif %}
       <div class="detail-field"><span class="detail-label">Date</span><span>{{ sighting.date }}</span></div>
       <div class="detail-field"><span class="detail-label">Time</span><span>{{ sighting.sighting_time or '—' }}</span></div>
       <div class="detail-field"><span class="detail-label">Pest Type</span><span><span class="pest-badge">{{ sighting.pest_type }}</span></span></div>

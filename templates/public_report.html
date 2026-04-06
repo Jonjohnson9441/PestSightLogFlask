@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a Pest Sighting</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body { background: #f0f4f1; }
+
+    .public-banner {
+      background: linear-gradient(135deg, #052818 0%, #0a4d2c 60%, #0d7a4e 100%);
+      padding: 36px 24px 60px;
+      text-align: center;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .public-banner::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: #f0f4f1;
+      clip-path: ellipse(55% 100% at 50% 100%);
+    }
+
+    .banner-shield {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 14px;
+      opacity: 0.9;
+    }
+
+    .public-banner h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+    .public-banner p  { font-size: 0.9rem; opacity: 0.75; max-width: 420px; margin: 0 auto; }
+
+    .public-container {
+      max-width: 640px;
+      margin: -20px auto 40px;
+      padding: 0 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .public-footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    .success-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      padding: 48px 32px;
+      text-align: center;
+    }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: #d1fae5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 1.8rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Banner -->
+<div class="public-banner">
+  <div class="banner-shield">
+    <svg viewBox="0 0 60 68" fill="none">
+      <path d="M30 4L56 15V34C56 49.5 44.8 63.2 30 67C15.2 63.2 4 49.5 4 34V15L30 4Z"
+            fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.7)" stroke-width="2.5"/>
+      <path d="M20 34L27 41L40 27" stroke="white" stroke-width="3.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+  <h1>Pest Sighting Report</h1>
+  <p>Help us maintain the highest food safety standards by reporting pest sightings immediately.</p>
+</div>
+
+<div class="public-container">
+
+  {% if success %}
+  <!-- Success state -->
+  <div class="success-card">
+    <div class="success-icon">&#10003;</div>
+    <h2 style="font-size:1.3rem;font-weight:800;color:#052818;margin-bottom:8px">Report Submitted!</h2>
+    <p style="color:#6b7280;margin-bottom:24px">Thank you for helping keep our facility safe. Your report has been logged and will be reviewed by the safety team.</p>
+    <a href="{{ url_for('public_report') }}" class="btn btn-primary">Submit Another Report</a>
+  </div>
+
+  {% else %}
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('public_report') }}" enctype="multipart/form-data">
+
+    <!-- Your Information -->
+    <div class="form-card form-section-card">
+      <div class="form-section-header">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <span class="form-section-title">Your Information</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first_name">First Name *</label>
+          <input type="text" id="first_name" name="first_name" placeholder="John" required autocomplete="given-name">
+        </div>
+        <div class="form-group">
+          <label for="last_name">Last Name *</label>
+          <input type="text" id="last_name" name="last_name" placeholder="Smith" required autocomplete="family-name">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label for="email">Email Address *</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+    </div>
+
+    <!-- When -->
+    <div class="form-card form-section-card">
+      <div class="form-section-header">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <span class="form-section-title">When Did You See It?</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="date">Date *</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="date" id="date" name="date" value="{{ today }}" required style="flex:1">
+            <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="document.getElementById('date').value=new Date().toLocaleDateString('en-CA')">Today</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="sighting_time">Time *</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="time" id="sighting_time" name="sighting_time" value="{{ now_time }}" required style="flex:1">
+            <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="const n=new Date();document.getElementById('sighting_time').value=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')">Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pest & Location -->
+    <div class="form-card form-section-card">
+      <div class="form-section-header">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <span class="form-section-title">Pest &amp; Location</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pest_type">Pest Type *</label>
+          <select id="pest_type" name="pest_type" class="form-select" required>
+            <option value="">— Select pest type —</option>
+            <option>Rodent (Mouse/Rat)</option>
+            <option>Cockroach</option>
+            <option>Fly</option>
+            <option>Ant</option>
+            <option>Wasp / Bee</option>
+            <option>Spider</option>
+            <option>Bird</option>
+            <option>Stored Product Pest</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="location">Location *</label>
+          <select id="location" name="location" class="form-select" required>
+            <option value="">— Select location —</option>
+            <option>Production Floor</option>
+            <option>Warehouse / Storage</option>
+            <option>Break Room</option>
+            <option>Restrooms</option>
+            <option>Loading / Receiving Dock</option>
+            <option>Office Area</option>
+            <option>Packaging Area</option>
+            <option>Ingredient Storage</option>
+            <option>Exterior / Parking Lot</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo -->
+    <div class="form-card form-section-card">
+      <div class="form-section-header">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <span class="form-section-title">Photo <span style="font-weight:400;color:#9ca3af;font-size:0.8rem">(optional but helpful)</span></span>
+      </div>
+      <div class="photo-drop-zone" id="photo_drop" onclick="document.getElementById('photo_input').click()">
+        <input type="file" id="photo_input" name="photo" accept="image/*" capture="environment" style="display:none">
+        <div class="drop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <p class="drop-title">Take a photo or upload an image</p>
+        <p class="drop-sub">Click to select &nbsp;&mdash;&nbsp; max 5 MB</p>
+      </div>
+      <div id="photo_preview_wrap" style="display:none;margin-top:12px;position:relative">
+        <img id="photo_preview_img" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #e5e7eb" alt="Preview">
+        <button type="button" onclick="removePhoto()"
+                style="position:absolute;top:6px;right:6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1">✕</button>
+      </div>
+    </div>
+
+    <!-- Additional Details -->
+    <div class="form-card form-section-card">
+      <div class="form-section-header">
+        <div class="form-section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <span class="form-section-title">Additional Details <span style="font-weight:400;color:#9ca3af;font-size:0.8rem">(optional)</span></span>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <textarea name="description" rows="4"
+                  placeholder="Describe what you saw — number of pests, exact spot, droppings, entry points, or any other details..."></textarea>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block" style="margin-bottom:32px">Submit Sighting Report</button>
+
+  </form>
+  {% endif %}
+</div>
+
+<div class="public-footer">
+  PestSightLog &nbsp;&mdash;&nbsp; Food Safety Pest Reporting
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="{{ url_for('login') }}" style="color:#9ca3af">Staff Login</a>
+</div>
+
+<script>
+  document.getElementById('photo_input').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('photo_preview_img').src = e.target.result;
+      document.getElementById('photo_preview_wrap').style.display = 'block';
+      document.getElementById('photo_drop').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function removePhoto() {
+    document.getElementById('photo_input').value = '';
+    document.getElementById('photo_preview_wrap').style.display = 'none';
+    document.getElementById('photo_drop').style.display = 'block';
+  }
+</script>
+
+</body>
+</html>

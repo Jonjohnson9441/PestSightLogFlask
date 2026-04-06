@@ -86,6 +86,7 @@ class Sighting(db.Model):
     description       = db.Column(db.Text, nullable=True)
     reported_by_name  = db.Column(db.String(100), nullable=False)
     sighting_time     = db.Column(db.String(10), nullable=True)
+    reporter_email    = db.Column(db.String(200), nullable=True)
     photo_filename    = db.Column(db.String(200), nullable=True)
     status            = db.Column(db.String(20), default='open', nullable=False)
     owner_id          = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -486,6 +487,58 @@ def delete_user(user_id):
         flash(f'User "{user.username}" deleted.', 'success')
 
     return redirect(url_for('manage_users'))
+
+
+@app.route('/submit', methods=['GET', 'POST'])
+def public_report():
+    """Public pest sighting form — no login required."""
+    if request.method == 'POST':
+        first_name    = request.form.get('first_name', '').strip()
+        last_name     = request.form.get('last_name', '').strip()
+        email         = request.form.get('email', '').strip()
+        date_str      = request.form.get('date', '').strip()
+        sighting_time = request.form.get('sighting_time', '').strip()
+        location      = request.form.get('location', '').strip()
+        pest_type     = request.form.get('pest_type', '').strip()
+        description   = request.form.get('description', '').strip()
+
+        if not all([first_name, last_name, email, date_str, location, pest_type]):
+            return render_template('public_report.html',
+                                   error='Please fill in all required fields.',
+                                   today=date_str,
+                                   now_time=sighting_time)
+
+        photo_filename = None
+        photo_file = request.files.get('photo')
+        if photo_file and photo_file.filename and allowed_file(photo_file.filename):
+            ext = photo_file.filename.rsplit('.', 1)[1].lower()
+            photo_filename = f'{uuid.uuid4().hex}.{ext}'
+            photo_file.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+
+        # Use the hidden system user for public submissions
+        system_user = User.query.filter_by(username='_public_').first()
+
+        sighting = Sighting(
+            date=date_str,
+            sighting_time=sighting_time or None,
+            location=location,
+            pest_type=pest_type,
+            description=description,
+            reported_by_name=f'{first_name} {last_name}',
+            reporter_email=email,
+            photo_filename=photo_filename,
+            user_id=system_user.id
+        )
+        db.session.add(sighting)
+        db.session.commit()
+        return render_template('public_report.html',
+                               success=True,
+                               today=datetime.today().strftime('%Y-%m-%d'),
+                               now_time=datetime.now().strftime('%H:%M'))
+
+    today    = datetime.today().strftime('%Y-%m-%d')
+    now_time = datetime.now().strftime('%H:%M')
+    return render_template('public_report.html', today=today, now_time=now_time)
 
 
 @app.route('/uploads/<filename>')

@@ -7,6 +7,7 @@
 
 from app import app, db, User
 import sqlite3
+import secrets
 import os
 
 with app.app_context():
@@ -46,6 +47,9 @@ with app.app_context():
         if 'due_date' not in existing:
             cursor.execute('ALTER TABLE sighting ADD COLUMN due_date DATE')
             print('Added due_date column.')
+        if 'reporter_email' not in existing:
+            cursor.execute('ALTER TABLE sighting ADD COLUMN reporter_email VARCHAR(200)')
+            print('Added reporter_email column.')
         conn.commit()
         conn.close()
 
@@ -63,5 +67,14 @@ with app.app_context():
         print('  IMPORTANT: Log in and change this password immediately.')
     else:
         print('Admin account already exists — no changes made.')
+
+    # Create hidden system user for public submissions
+    if not User.query.filter_by(username='_public_').first():
+        system = User(username='_public_', is_admin=False,
+                      first_name='Public', last_name='Submission')
+        system.set_password(secrets.token_hex(32))
+        db.session.add(system)
+        db.session.commit()
+        print('System user for public submissions created.')
 
     print('Setup complete. You can now run: python app.py')
