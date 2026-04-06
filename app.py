@@ -13,9 +13,18 @@ from sqlalchemy import func
 import os
 import uuid
 import re
+import socket
 
 def valid_email(email):
-    return bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$', email))
+    """Check email format and verify the domain actually exists via DNS."""
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$', email):
+        return False
+    domain = email.split('@')[1]
+    try:
+        socket.getaddrinfo(domain, None)
+        return True
+    except socket.gaierror:
+        return False
 
 EASTERN = ZoneInfo('America/New_York')
 
