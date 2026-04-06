@@ -40,7 +40,7 @@
         <span style="color:#6b7280">{{ sighting.description or '—' }}</span>
       </div>
       <div class="detail-field"><span class="detail-label">Logged At</span>
-        <span class="muted">{{ sighting.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+        <span class="muted">{{ sighting.created_at | localtime }}</span>
       </div>
       {% if sighting.due_date %}
       <div class="detail-field">
@@ -70,7 +70,7 @@
       <p style="font-size:0.875rem;margin-bottom:12px">
         Owned by <strong>{{ sighting.owner.full_name }}</strong>
         {% if sighting.owner_taken_at %}
-          since {{ sighting.owner_taken_at.strftime('%b %d, %Y %I:%M %p') }}
+          since {{ sighting.owner_taken_at | localtime }}
         {% endif %}
       </p>
       {% else %}
@@ -135,7 +135,7 @@
         <div class="capa-entry">
           <div class="capa-entry-header">
             <span class="capa-type-badge capa-type-{{ entry.entry_type.replace(' ', '-').lower() }}">{{ entry.entry_type }}</span>
-            <span class="muted" style="font-size:0.75rem">{{ entry.author.full_name }} &middot; {{ entry.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+            <span class="muted" style="font-size:0.75rem">{{ entry.author.full_name }} &middot; {{ entry.created_at | localtime }}</span>
           </div>
           <p class="capa-entry-text">{{ entry.description }}</p>
           {% if entry.photo_filename %}

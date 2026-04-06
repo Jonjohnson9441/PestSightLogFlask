@@ -88,7 +88,8 @@
         {% for row in top_locations %}
         <div style="margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px">
-            <span style="color:#374151;font-weight:500">{{ row.location }}</span>
+            <a href="{{ url_for('sightings', filter_location=row.location, status='') }}"
+               style="color:#0a4d2c;font-weight:500">{{ row.location }}</a>
             <span class="muted">{{ row.cnt }}</span>
           </div>
           <div class="trend-bar-bg">
@@ -109,7 +110,8 @@
         {% for row in top_pests %}
         <div style="margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px">
-            <span style="color:#374151;font-weight:500">{{ row.pest_type }}</span>
+            <a href="{{ url_for('sightings', filter_pest=row.pest_type, status='') }}"
+               style="color:#92400e;font-weight:500">{{ row.pest_type }}</a>
             <span class="muted">{{ row.cnt }}</span>
           </div>
           <div class="trend-bar-bg">

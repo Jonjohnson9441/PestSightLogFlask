@@ -8,9 +8,12 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from sqlalchemy import func
 import os
 import uuid
+
+EASTERN = ZoneInfo('America/New_York')
 
 # ── App Configuration ──────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -35,9 +38,16 @@ def allowed_file(filename):
 db = SQLAlchemy(app)
 
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'           # Redirect here if not logged in
+login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'error'
+
+@app.template_filter('localtime')
+def localtime_filter(dt):
+    """Convert a UTC datetime to Eastern time and format it."""
+    if dt is None:
+        return '—'
+    return dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(EASTERN).strftime('%b %d, %Y %I:%M %p %Z')
 
 
 # ── Database Models ────────────────────────────────────────────────────────────
@@ -243,15 +253,21 @@ def report():
 @login_required
 def sightings():
     """View all sightings with status tabs and optional search filter."""
-    search     = request.args.get('search', '').strip()
-    status_tab = request.args.get('status', 'open')
+    search          = request.args.get('search', '').strip()
+    status_tab      = request.args.get('status', 'open')
+    filter_location = request.args.get('filter_location', '').strip()
+    filter_pest     = request.args.get('filter_pest', '').strip()
 
     query = Sighting.query
 
     if status_tab in ('open', 'in_progress', 'completed'):
         query = query.filter_by(status=status_tab)
 
-    if search:
+    if filter_location:
+        query = query.filter(Sighting.location == filter_location)
+    elif filter_pest:
+        query = query.filter(Sighting.pest_type == filter_pest)
+    elif search:
         like = f'%{search}%'
         query = query.filter(
             db.or_(
@@ -271,7 +287,8 @@ def sightings():
     }
 
     return render_template('sightings.html', sightings=results,
-                           search=search, status_tab=status_tab, counts=counts)
+                           search=search, status_tab=status_tab, counts=counts,
+                           filter_location=filter_location, filter_pest=filter_pest)
 
 
 @app.route('/sightings/<int:sighting_id>')
