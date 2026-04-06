@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block title %}Sighting #{{ sighting.id }} — PestSightLog{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="page-header">
+  <div>
+    <div style="font-size:0.8rem;color:#6b7280;margin-bottom:4px">
+      <a href="{{ url_for('sightings', status=sighting.status) }}">← Back to Sightings</a>
+    </div>
+    <h2>Sighting #{{ sighting.id }} — {{ sighting.pest_type }}</h2>
+    <p>{{ sighting.location }} &middot; {{ sighting.date }}{% if sighting.sighting_time %} at {{ sighting.sighting_time }}{% endif %}</p>
+  </div>
+  <span class="status-badge status-{{ sighting.status }}" style="font-size:0.9rem;padding:6px 14px">
+    {% if sighting.status == 'open' %}Needs Action
+    {% elif sighting.status == 'in_progress' %}In Progress
+    {% else %}Completed{% endif %}
+  </span>
+</div>
+
+<div class="detail-grid">
+
+  <!-- ── Left: Sighting details + Ownership ─────────────────────────────── -->
+  <div>
+
+    <!-- Sighting details card -->
+    <div class="form-card" style="margin-bottom:16px">
+      <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">Report Details</h3>
+      <div class="detail-field"><span class="detail-label">Reported By</span><span>{{ sighting.reported_by_name }}</span></div>
+      <div class="detail-field"><span class="detail-label">Date</span><span>{{ sighting.date }}</span></div>
+      <div class="detail-field"><span class="detail-label">Time</span><span>{{ sighting.sighting_time or '—' }}</span></div>
+      <div class="detail-field"><span class="detail-label">Pest Type</span><span><span class="pest-badge">{{ sighting.pest_type }}</span></span></div>
+      <div class="detail-field"><span class="detail-label">Location</span><span>{{ sighting.location }}</span></div>
+      <div class="detail-field"><span class="detail-label">Description</span>
+        <span style="color:#6b7280">{{ sighting.description or '—' }}</span>
+      </div>
+      <div class="detail-field"><span class="detail-label">Logged At</span>
+        <span class="muted">{{ sighting.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+      </div>
+      {% if sighting.photo_filename %}
+      <div style="margin-top:12px">
+        <div class="detail-label" style="margin-bottom:6px">Submitted Photo</div>
+        <a href="{{ url_for('uploaded_file', filename=sighting.photo_filename) }}" target="_blank">
+          <img src="{{ url_for('uploaded_file', filename=sighting.photo_filename) }}"
+               style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #e5e7eb">
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Ownership / status actions card -->
+    <div class="form-card">
+      <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">Ownership &amp; Status</h3>
+
+      {% if sighting.owner %}
+      <p style="font-size:0.875rem;margin-bottom:12px">
+        Owned by <strong>{{ sighting.owner.username }}</strong>
+        {% if sighting.owner_taken_at %}
+          since {{ sighting.owner_taken_at.strftime('%b %d, %Y %I:%M %p') }}
+        {% endif %}
+      </p>
+      {% else %}
+      <p style="font-size:0.875rem;color:#6b7280;margin-bottom:12px">No owner assigned — sighting needs action.</p>
+      {% endif %}
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+
+        {% if sighting.status == 'open' %}
+        <form method="POST" action="{{ url_for('take_ownership', sighting_id=sighting.id) }}">
+          <button type="submit" class="btn btn-primary">Take Ownership</button>
+        </form>
+
+        {% elif sighting.status == 'in_progress' %}
+          {% if sighting.owner_id == current_user.id or current_user.is_admin %}
+          <form method="POST" action="{{ url_for('complete_sighting', sighting_id=sighting.id) }}"
+                onsubmit="return confirm('Mark this sighting as Completed? Make sure your CAPA trail is documented.')">
+            <button type="submit" class="btn btn-primary">Mark Complete</button>
+          </form>
+          <form method="POST" action="{{ url_for('release_ownership', sighting_id=sighting.id) }}"
+                onsubmit="return confirm('Release ownership and return to Open?')">
+            <button type="submit" class="btn btn-secondary">Release Ownership</button>
+          </form>
+          {% else %}
+          <p style="font-size:0.8rem;color:#6b7280">{{ sighting.owner.username }} owns this sighting.</p>
+          {% endif %}
+
+        {% elif sighting.status == 'completed' %}
+          {% if current_user.is_admin %}
+          <form method="POST" action="{{ url_for('reopen_sighting', sighting_id=sighting.id) }}"
+                onsubmit="return confirm('Reopen this sighting?')">
+            <button type="submit" class="btn btn-secondary">Reopen</button>
+          </form>
+          {% endif %}
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Right: CAPA Trail ───────────────────────────────────────────────── -->
+  <div>
+
+    <!-- CAPA timeline -->
+    <div class="form-card" style="margin-bottom:16px">
+      <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">
+        CAPA Trail
+        <span style="font-weight:400;color:#6b7280;font-size:0.8rem">({{ sighting.capa_entries|length }} entr{{ 'y' if sighting.capa_entries|length == 1 else 'ies' }})</span>
+      </h3>
+
+      {% if sighting.capa_entries %}
+      <div class="capa-timeline">
+        {% for entry in sighting.capa_entries %}
+        <div class="capa-entry">
+          <div class="capa-entry-header">
+            <span class="capa-type-badge capa-type-{{ entry.entry_type.replace(' ', '-').lower() }}">{{ entry.entry_type }}</span>
+            <span class="muted" style="font-size:0.75rem">{{ entry.author.username }} &middot; {{ entry.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+          </div>
+          <p class="capa-entry-text">{{ entry.description }}</p>
+          {% if entry.photo_filename %}
+          <a href="{{ url_for('uploaded_file', filename=entry.photo_filename) }}" target="_blank">
+            <img src="{{ url_for('uploaded_file', filename=entry.photo_filename) }}"
+                 style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #e5e7eb;margin-top:8px">
+          </a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:#9ca3af;font-size:0.875rem;text-align:center;padding:20px 0">
+        No CAPA entries yet. Add the first entry below.
+      </p>
+      {% endif %}
+    </div>
+
+    <!-- Add CAPA entry form -->
+    {% if sighting.status != 'completed' %}
+    <div class="form-card">
+      <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">Add CAPA Entry</h3>
+      <form method="POST" action="{{ url_for('add_capa', sighting_id=sighting.id) }}" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="entry_type">Entry Type *</label>
+          <select id="entry_type" name="entry_type" class="form-select" required>
+            <option value="">— Select type —</option>
+            <option value="Corrective Action">Corrective Action — What was done immediately</option>
+            <option value="Root Cause">Root Cause — Why the pest appeared</option>
+            <option value="Preventive Action">Preventive Action — How to prevent recurrence</option>
+            <option value="Verification">Verification — Proof the fix worked</option>
+            <option value="Comment">Comment / Note</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="description">Description *</label>
+          <textarea id="description" name="description" rows="3"
+                    placeholder="Describe the action taken, finding, or note..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Photo <span class="optional">(optional)</span></label>
+          <input type="file" name="photo" accept="image/*"
+                 style="font-size:0.875rem;padding:6px 0">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Entry</button>
+      </form>
+    </div>
+    {% else %}
+    <div class="form-card" style="text-align:center;padding:24px">
+      <div style="font-size:1.5rem;margin-bottom:8px">&#10003;</div>
+      <p style="font-weight:600;color:#052818">CAPA Completed</p>
+      <p style="font-size:0.875rem;color:#6b7280;margin-top:4px">This sighting has been closed. The CAPA trail above is your audit record.</p>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

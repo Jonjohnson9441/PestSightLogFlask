@@ -26,6 +26,15 @@ with app.app_context():
         if 'photo_filename' not in existing:
             cursor.execute('ALTER TABLE sighting ADD COLUMN photo_filename VARCHAR(200)')
             print('Added photo_filename column.')
+        if 'status' not in existing:
+            cursor.execute("ALTER TABLE sighting ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'open'")
+            print('Added status column.')
+        if 'owner_id' not in existing:
+            cursor.execute('ALTER TABLE sighting ADD COLUMN owner_id INTEGER REFERENCES user(id)')
+            print('Added owner_id column.')
+        if 'owner_taken_at' not in existing:
+            cursor.execute('ALTER TABLE sighting ADD COLUMN owner_taken_at DATETIME')
+            print('Added owner_taken_at column.')
         conn.commit()
         conn.close()
 

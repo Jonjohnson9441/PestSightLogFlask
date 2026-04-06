@@ -47,7 +47,7 @@ class User(UserMixin, db.Model):
     username      = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     is_admin      = db.Column(db.Boolean, default=False, nullable=False)
-    sightings     = db.relationship('Sighting', backref='user', lazy=True)
+    sightings     = db.relationship('Sighting', foreign_keys='Sighting.user_id', back_populates='reporter', lazy=True)
 
     def set_password(self, password):
         """Hash and store a password."""
@@ -68,8 +68,27 @@ class Sighting(db.Model):
     reported_by_name  = db.Column(db.String(100), nullable=False)
     sighting_time     = db.Column(db.String(10), nullable=True)
     photo_filename    = db.Column(db.String(200), nullable=True)
+    status            = db.Column(db.String(20), default='open', nullable=False)
+    owner_id          = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    owner_taken_at    = db.Column(db.DateTime, nullable=True)
     user_id           = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at        = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    reporter          = db.relationship('User', foreign_keys=[user_id], backref='sightings')
+    owner             = db.relationship('User', foreign_keys=[owner_id])
+    capa_entries      = db.relationship('CAPAEntry', backref='sighting', lazy=True,
+                                        order_by='CAPAEntry.created_at')
+
+
+class CAPAEntry(db.Model):
+    """A single entry in the CAPA trail for a pest sighting."""
+    id             = db.Column(db.Integer, primary_key=True)
+    sighting_id    = db.Column(db.Integer, db.ForeignKey('sighting.id'), nullable=False)
+    user_id        = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    entry_type     = db.Column(db.String(50), nullable=False)
+    description    = db.Column(db.Text, nullable=False)
+    photo_filename = db.Column(db.String(200), nullable=True)
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    author         = db.relationship('User', foreign_keys=[user_id])
 
 
 # ── Flask-Login: how to load a user from their session ────────────────────────
@@ -167,19 +186,15 @@ def report():
 @app.route('/sightings')
 @login_required
 def sightings():
-    """
-    View sightings in a table with optional search filter.
-    Admins see all sightings. Regular users see only their own.
-    """
-    search = request.args.get('search', '').strip()
+    """View all sightings with status tabs and optional search filter."""
+    search     = request.args.get('search', '').strip()
+    status_tab = request.args.get('status', 'open')
 
-    # Admins see everything; regular users see only their own reports
-    if current_user.is_admin:
-        query = Sighting.query
-    else:
-        query = Sighting.query.filter_by(user_id=current_user.id)
+    query = Sighting.query
 
-    # Apply search across location, pest type, description, and reporter name
+    if status_tab in ('open', 'in_progress', 'completed'):
+        query = query.filter_by(status=status_tab)
+
     if search:
         like = f'%{search}%'
         query = query.filter(
@@ -192,7 +207,106 @@ def sightings():
         )
 
     results = query.order_by(Sighting.created_at.desc()).all()
-    return render_template('sightings.html', sightings=results, search=search)
+
+    counts = {
+        'open':        Sighting.query.filter_by(status='open').count(),
+        'in_progress': Sighting.query.filter_by(status='in_progress').count(),
+        'completed':   Sighting.query.filter_by(status='completed').count(),
+    }
+
+    return render_template('sightings.html', sightings=results,
+                           search=search, status_tab=status_tab, counts=counts)
+
+
+@app.route('/sightings/<int:sighting_id>')
+@login_required
+def sighting_detail(sighting_id):
+    """Detail view for a single sighting with its CAPA trail."""
+    sighting = Sighting.query.get_or_404(sighting_id)
+    return render_template('sighting_detail.html', sighting=sighting)
+
+
+@app.route('/sightings/<int:sighting_id>/take-ownership', methods=['POST'])
+@login_required
+def take_ownership(sighting_id):
+    sighting = Sighting.query.get_or_404(sighting_id)
+    if sighting.status == 'open':
+        sighting.status         = 'in_progress'
+        sighting.owner_id       = current_user.id
+        sighting.owner_taken_at = datetime.utcnow()
+        db.session.commit()
+        flash('You have taken ownership of this sighting.', 'success')
+    return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+
+
+@app.route('/sightings/<int:sighting_id>/release-ownership', methods=['POST'])
+@login_required
+def release_ownership(sighting_id):
+    sighting = Sighting.query.get_or_404(sighting_id)
+    if sighting.owner_id == current_user.id or current_user.is_admin:
+        sighting.status         = 'open'
+        sighting.owner_id       = None
+        sighting.owner_taken_at = None
+        db.session.commit()
+        flash('Ownership released — sighting is back to Open.', 'success')
+    return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+
+
+@app.route('/sightings/<int:sighting_id>/complete', methods=['POST'])
+@login_required
+def complete_sighting(sighting_id):
+    sighting = Sighting.query.get_or_404(sighting_id)
+    if sighting.owner_id == current_user.id or current_user.is_admin:
+        sighting.status = 'completed'
+        db.session.commit()
+        flash('Sighting marked as Completed.', 'success')
+    return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+
+
+@app.route('/sightings/<int:sighting_id>/reopen', methods=['POST'])
+@login_required
+def reopen_sighting(sighting_id):
+    """Admin-only: reopen a completed sighting."""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+    sighting = Sighting.query.get_or_404(sighting_id)
+    sighting.status = 'in_progress'
+    db.session.commit()
+    flash('Sighting reopened and set back to In Progress.', 'success')
+    return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+
+
+@app.route('/sightings/<int:sighting_id>/capa', methods=['POST'])
+@login_required
+def add_capa(sighting_id):
+    """Add a CAPA entry to a sighting."""
+    sighting    = Sighting.query.get_or_404(sighting_id)
+    entry_type  = request.form.get('entry_type', '').strip()
+    description = request.form.get('description', '').strip()
+
+    if not entry_type or not description:
+        flash('Entry type and description are required.', 'error')
+        return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+
+    photo_filename = None
+    photo_file = request.files.get('photo')
+    if photo_file and photo_file.filename and allowed_file(photo_file.filename):
+        ext = photo_file.filename.rsplit('.', 1)[1].lower()
+        photo_filename = f'{uuid.uuid4().hex}.{ext}'
+        photo_file.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+
+    entry = CAPAEntry(
+        sighting_id=sighting_id,
+        user_id=current_user.id,
+        entry_type=entry_type,
+        description=description,
+        photo_filename=photo_filename
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash('CAPA entry added.', 'success')
+    return redirect(url_for('sighting_detail', sighting_id=sighting_id))
 
 
 @app.route('/admin/users')

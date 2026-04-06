@@ -5,21 +5,38 @@
 <div class="page-header">
   <div>
     <h2>Pest Sightings</h2>
-    <p>{{ sightings|length }} record{{ '' if sightings|length == 1 else 's' }}
-       {% if not current_user.is_admin %} (your reports only){% endif %}
-       {% if search %} matching "{{ search }}"{% endif %}
-    </p>
+    <p>All reported pest sightings{% if search %} matching "{{ search }}"{% endif %}</p>
   </div>
   <a href="{{ url_for('report') }}" class="btn btn-primary">+ Report Sighting</a>
 </div>
 
-<!-- Search / Filter bar -->
+<!-- Status Tabs -->
+<div class="status-tabs">
+  <a href="{{ url_for('sightings', status='open', search=search) }}"
+     class="status-tab {{ 'active' if status_tab == 'open' }}">
+    Needs Action
+    {% if counts.open %}<span class="tab-count tab-count-open">{{ counts.open }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('sightings', status='in_progress', search=search) }}"
+     class="status-tab {{ 'active' if status_tab == 'in_progress' }}">
+    In Progress
+    {% if counts.in_progress %}<span class="tab-count tab-count-progress">{{ counts.in_progress }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('sightings', status='completed', search=search) }}"
+     class="status-tab {{ 'active' if status_tab == 'completed' }}">
+    Completed CAPAs
+    {% if counts.completed %}<span class="tab-count tab-count-done">{{ counts.completed }}</span>{% endif %}
+  </a>
+</div>
+
+<!-- Search bar -->
 <form method="GET" action="{{ url_for('sightings') }}" class="search-bar">
+  <input type="hidden" name="status" value="{{ status_tab }}">
   <input type="text" name="search" value="{{ search }}"
          placeholder="Search by location, pest type, description, or reporter...">
   <button type="submit" class="btn btn-primary">Search</button>
   {% if search %}
-  <a href="{{ url_for('sightings') }}" class="btn btn-secondary">Clear</a>
+  <a href="{{ url_for('sightings', status=status_tab) }}" class="btn btn-secondary">Clear</a>
   {% endif %}
 </form>
 
@@ -29,37 +46,50 @@
     <thead>
       <tr>
         <th>#</th>
-        <th>Date</th>
-        <th>Time</th>
+        <th>Date / Time</th>
         <th>Pest Type</th>
         <th>Location</th>
         <th>Reported By</th>
-        <th>Description</th>
+        <th>Status</th>
+        <th>Owner</th>
         <th>Photo</th>
-        <th>Logged At</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody>
       {% for s in sightings %}
       <tr>
         <td class="muted">{{ s.id }}</td>
-        <td>{{ s.date }}</td>
-        <td class="muted">{{ s.sighting_time or '—' }}</td>
+        <td>
+          {{ s.date }}
+          {% if s.sighting_time %}<div class="muted">{{ s.sighting_time }}</div>{% endif %}
+        </td>
         <td><span class="pest-badge">{{ s.pest_type }}</span></td>
         <td>{{ s.location }}</td>
         <td>{{ s.reported_by_name }}</td>
-        <td class="description-cell">{{ s.description or '—' }}</td>
+        <td><span class="status-badge status-{{ s.status }}">
+          {% if s.status == 'open' %}Needs Action
+          {% elif s.status == 'in_progress' %}In Progress
+          {% else %}Completed{% endif %}
+        </span></td>
+        <td>
+          {% if s.owner %}
+            <span style="font-size:0.8rem">{{ s.owner.username }}</span>
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
         <td>
           {% if s.photo_filename %}
           <a href="{{ url_for('uploaded_file', filename=s.photo_filename) }}" target="_blank">
             <img src="{{ url_for('uploaded_file', filename=s.photo_filename) }}"
-                 style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb">
+                 style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb">
           </a>
-          {% else %}
-          <span class="muted">—</span>
-          {% endif %}
+          {% else %}<span class="muted">—</span>{% endif %}
         </td>
-        <td class="muted">{{ s.created_at.strftime('%b %d, %Y %I:%M %p') }}</td>
+        <td>
+          <a href="{{ url_for('sighting_detail', sighting_id=s.id) }}" class="btn btn-secondary btn-sm">View / CAPA</a>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -68,12 +98,24 @@
 
 {% else %}
 <div class="empty-state">
-  <div class="empty-icon">&#128269;</div>
-  <h3>No sightings found</h3>
+  <div class="empty-icon">
+    {% if status_tab == 'open' %}&#128269;
+    {% elif status_tab == 'in_progress' %}&#9881;
+    {% else %}&#10003;{% endif %}
+  </div>
+  <h3>
+    {% if status_tab == 'open' %}No open sightings
+    {% elif status_tab == 'in_progress' %}Nothing in progress
+    {% else %}No completed reports yet{% endif %}
+  </h3>
   {% if search %}
-  <p>No results for "{{ search }}". <a href="{{ url_for('sightings') }}">Clear the search</a> to see all records.</p>
+  <p>No results for "{{ search }}". <a href="{{ url_for('sightings', status=status_tab) }}">Clear search</a></p>
   {% else %}
-  <p>No sightings have been reported yet. <a href="{{ url_for('report') }}">Submit the first one.</a></p>
+  <p>
+    {% if status_tab == 'open' %}All clear — no pest sightings need action right now.
+    {% elif status_tab == 'in_progress' %}No sightings are currently being worked on.
+    {% else %}Completed sightings with full CAPA trails will appear here.{% endif %}
+  </p>
   {% endif %}
 </div>
 {% endif %}
