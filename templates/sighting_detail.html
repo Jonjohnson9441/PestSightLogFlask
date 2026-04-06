@@ -136,24 +136,20 @@
 
     {% if sighting.status != 'completed' %}
 
-    <!-- Tab switcher -->
-    <div style="display:flex;gap:0;margin-bottom:0;border-bottom:2px solid #e5e7eb">
-      <button type="button" id="tab-response" onclick="showTab('response')"
-              class="capa-tab capa-tab-active">Log Initial Response</button>
-      <button type="button" id="tab-followup" onclick="showTab('followup')"
-              class="capa-tab">Add Follow-up</button>
-    </div>
+    {% set has_initial = sighting.capa_entries | selectattr('entry_type', 'equalto', 'Corrective Action') | list | length > 0 %}
 
-    <!-- Initial Response form (CA + Root Cause + Preventive in one) -->
-    <div id="panel-response" class="form-card" style="border-radius:0 0 12px 12px;margin-bottom:16px">
+    {% if not has_initial %}
+    <!-- Initial Response form — shown only until first CA is logged -->
+    <div class="form-card" style="margin-bottom:16px">
+      <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">Log Initial Response</h3>
       <p style="font-size:0.8rem;color:#6b7280;margin-bottom:14px">
-        Log all three together — this is typically done in one visit when the tech first responds.
+        Fill in what you know now — Corrective Action is required. Root Cause and Preventive Action can be added if identified.
       </p>
       <form method="POST" action="{{ url_for('add_capa', sighting_id=sighting.id) }}" enctype="multipart/form-data">
         <input type="hidden" name="form_type" value="response">
         <div class="form-group">
           <label for="corrective">Corrective Action *
-            <span class="optional">— What was done immediately to address the sighting</span>
+            <span class="optional">— What was done immediately</span>
           </label>
           <textarea id="corrective" name="corrective" rows="2" required
                     placeholder="e.g. Placed glue traps along wall perimeter, removed food debris from area..."></textarea>
@@ -173,17 +169,19 @@
                     placeholder="e.g. Maintenance work order submitted to seal gap, cleaning schedule updated..."></textarea>
         </div>
         <div class="form-group">
-          <label>Photo <span class="optional">(optional — attaches to corrective action)</span></label>
+          <label>Photo <span class="optional">(optional)</span></label>
           <input type="file" name="photo" accept="image/*" style="font-size:0.875rem;padding:6px 0">
         </div>
-        <button type="submit" class="btn btn-primary">Save Response</button>
+        <button type="submit" class="btn btn-primary">Save Initial Response</button>
       </form>
     </div>
 
-    <!-- Follow-up form (Verification or Comment) -->
-    <div id="panel-followup" class="form-card" style="display:none;border-radius:0 0 12px 12px;margin-bottom:16px">
+    {% else %}
+    <!-- Follow-up form — shown once initial response is logged -->
+    <div class="form-card" style="margin-bottom:16px">
+      <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">Add Follow-up Entry</h3>
       <p style="font-size:0.8rem;color:#6b7280;margin-bottom:14px">
-        Use this for verification (days/weeks after the fix) or to add a general comment.
+        Add verification once the fix is confirmed. If the issue persists, log additional corrective or preventive actions.
       </p>
       <form method="POST" action="{{ url_for('add_capa', sighting_id=sighting.id) }}" enctype="multipart/form-data">
         <input type="hidden" name="form_type" value="followup">
@@ -191,22 +189,32 @@
           <label for="entry_type">Entry Type *</label>
           <select id="entry_type" name="entry_type" class="form-select" required>
             <option value="">— Select —</option>
-            <option value="Verification">Verification — Proof the corrective action worked</option>
-            <option value="Comment">Comment / Note</option>
+            <optgroup label="Verification">
+              <option value="Verification">Verification — Proof the fix worked</option>
+            </optgroup>
+            <optgroup label="Additional Actions (if issue persists)">
+              <option value="Corrective Action">Additional Corrective Action</option>
+              <option value="Root Cause">Additional Root Cause Finding</option>
+              <option value="Preventive Action">Additional Preventive Action</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option value="Comment">Comment / Note</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-group">
           <label for="description">Description *</label>
           <textarea id="description" name="description" rows="3"
-                    placeholder="Describe the follow-up finding or note..."></textarea>
+                    placeholder="Describe the finding, action taken, or note..."></textarea>
         </div>
         <div class="form-group">
           <label>Photo <span class="optional">(optional)</span></label>
           <input type="file" name="photo" accept="image/*" style="font-size:0.875rem;padding:6px 0">
         </div>
-        <button type="submit" class="btn btn-primary">Add Follow-up</button>
+        <button type="submit" class="btn btn-primary">Add Entry</button>
       </form>
     </div>
+    {% endif %}
 
     {% else %}
     <div class="form-card" style="text-align:center;padding:24px">
@@ -215,15 +223,6 @@
       <p style="font-size:0.875rem;color:#6b7280;margin-top:4px">This sighting has been closed. The CAPA trail above is your audit record.</p>
     </div>
     {% endif %}
-
-<script>
-function showTab(tab) {
-  document.getElementById('panel-response').style.display = tab === 'response' ? 'block' : 'none';
-  document.getElementById('panel-followup').style.display = tab === 'followup' ? 'block' : 'none';
-  document.getElementById('tab-response').className = 'capa-tab' + (tab === 'response' ? ' capa-tab-active' : '');
-  document.getElementById('tab-followup').className = 'capa-tab' + (tab === 'followup' ? ' capa-tab-active' : '');
-}
-</script>
 
   </div>
 </div>
