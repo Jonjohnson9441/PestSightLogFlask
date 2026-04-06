@@ -117,6 +117,14 @@
             <button type="submit" class="btn btn-secondary">Reopen</button>
           </form>
           {% endif %}
+
+        {% if current_user.is_admin %}
+        <form method="POST" action="{{ url_for('delete_sighting', sighting_id=sighting.id) }}"
+              onsubmit="return confirm('Permanently delete Sighting #{{ sighting.id }} and all its CAPA entries? This cannot be undone.')"
+              style="margin-top:16px;padding-top:16px;border-top:1px solid #f3f4f6">
+          <button type="submit" class="btn btn-danger btn-sm">Delete This Report</button>
+        </form>
+        {% endif %}
         {% endif %}
 
       </div>

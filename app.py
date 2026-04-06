@@ -565,6 +565,21 @@ def public_report():
     return render_template('public_report.html', today=today, now_time=now_time)
 
 
+@app.route('/sightings/<int:sighting_id>/delete', methods=['POST'])
+@login_required
+def delete_sighting(sighting_id):
+    """Admin-only: permanently delete a sighting and its CAPA entries."""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('sightings'))
+    sighting = Sighting.query.get_or_404(sighting_id)
+    CAPAEntry.query.filter_by(sighting_id=sighting_id).delete()
+    db.session.delete(sighting)
+    db.session.commit()
+    flash(f'Sighting #{sighting_id} has been deleted.', 'success')
+    return redirect(url_for('sightings', status='open'))
+
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     """Serve an uploaded photo."""
