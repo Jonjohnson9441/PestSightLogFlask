@@ -3,82 +3,171 @@
 
 {% block content %}
 <div class="page-header">
-  <h2>Report a Pest Sighting</h2>
-  <p>Fill in the details below. All fields marked * are required.</p>
+  <div>
+    <h2>Report a Pest Sighting</h2>
+    <p>Fill in the details below. Fields marked * are required.</p>
+  </div>
 </div>
 
-<div class="form-card">
-  <form method="POST" action="{{ url_for('report') }}">
+<form method="POST" action="{{ url_for('report') }}" enctype="multipart/form-data">
 
+  <!-- ── Your Information ──────────────────────────────────────────────────── -->
+  <div class="form-card form-section-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <span class="form-section-title">Your Information</span>
+    </div>
     <div class="form-row">
+      <div class="form-group">
+        <label for="first_name">First Name *</label>
+        <input type="text" id="first_name" name="first_name" placeholder="John" required>
+      </div>
+      <div class="form-group">
+        <label for="last_name">Last Name *</label>
+        <input type="text" id="last_name" name="last_name" placeholder="Smith" required>
+      </div>
+    </div>
+  </div>
 
+  <!-- ── When Did You See It? ──────────────────────────────────────────────── -->
+  <div class="form-card form-section-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <span class="form-section-title">When Did You See It?</span>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label for="date">Date *</label>
         <input type="date" id="date" name="date" value="{{ today }}" required>
       </div>
-
       <div class="form-group">
-        <label for="reported_by">Reported By *</label>
-        <input type="text" id="reported_by" name="reported_by"
-               value="{{ current_user.username }}"
-               placeholder="Full name or username" required>
+        <label for="sighting_time">Time *</label>
+        <input type="time" id="sighting_time" name="sighting_time" value="{{ now_time }}" required>
       </div>
-
     </div>
+  </div>
 
-    <div class="form-row">
-
-      <div class="form-group">
-        <label for="location">Location *</label>
-        <input type="text" id="location" name="location"
-               list="location-options"
-               placeholder="e.g. Production Floor, Warehouse..."
-               required>
-        <datalist id="location-options">
-          <option value="Production Floor">
-          <option value="Warehouse / Storage">
-          <option value="Break Room">
-          <option value="Restrooms">
-          <option value="Loading / Receiving Dock">
-          <option value="Office Area">
-          <option value="Packaging Area">
-          <option value="Ingredient Storage">
-          <option value="Exterior / Parking Lot">
-        </datalist>
+  <!-- ── Pest & Location ───────────────────────────────────────────────────── -->
+  <div class="form-card form-section-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
       </div>
-
+      <span class="form-section-title">Pest &amp; Location</span>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label for="pest_type">Pest Type *</label>
-        <input type="text" id="pest_type" name="pest_type"
-               list="pest-options"
-               placeholder="e.g. Rodent, Fly, Cockroach..."
-               required>
-        <datalist id="pest-options">
-          <option value="Rodent (Mouse/Rat)">
-          <option value="Cockroach">
-          <option value="Fly">
-          <option value="Ant">
-          <option value="Wasp / Bee">
-          <option value="Spider">
-          <option value="Bird">
-          <option value="Stored Product Pest">
-          <option value="Other">
-        </datalist>
+        <select id="pest_type" name="pest_type" class="form-select" required>
+          <option value="">— Select pest type —</option>
+          <option>Rodent (Mouse/Rat)</option>
+          <option>Cockroach</option>
+          <option>Fly</option>
+          <option>Ant</option>
+          <option>Wasp / Bee</option>
+          <option>Spider</option>
+          <option>Bird</option>
+          <option>Stored Product Pest</option>
+          <option>Other</option>
+        </select>
       </div>
+      <div class="form-group">
+        <label for="location">Location *</label>
+        <select id="location" name="location" class="form-select" required>
+          <option value="">— Select location —</option>
+          <option>Production Floor</option>
+          <option>Warehouse / Storage</option>
+          <option>Break Room</option>
+          <option>Restrooms</option>
+          <option>Loading / Receiving Dock</option>
+          <option>Office Area</option>
+          <option>Packaging Area</option>
+          <option>Ingredient Storage</option>
+          <option>Exterior / Parking Lot</option>
+        </select>
+      </div>
+    </div>
+  </div>
 
+  <!-- ── Photo ─────────────────────────────────────────────────────────────── -->
+  <div class="form-card form-section-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+      <span class="form-section-title">Photo <span style="font-weight:400;color:#9ca3af;font-size:0.8rem">(optional but helpful)</span></span>
     </div>
 
-    <div class="form-group">
-      <label for="description">Description <span class="optional">(optional)</span></label>
+    <div class="photo-drop-zone" id="photo_drop" onclick="document.getElementById('photo_input').click()">
+      <input type="file" id="photo_input" name="photo" accept="image/*" capture="environment" style="display:none">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+      <p class="drop-title">Take a photo or upload an image</p>
+      <p class="drop-sub">Click to select &nbsp;&mdash;&nbsp; max 5 MB</p>
+    </div>
+
+    <div id="photo_preview_wrap" style="display:none;margin-top:12px;position:relative;display:none">
+      <img id="photo_preview_img" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #e5e7eb" alt="Preview">
+      <button type="button" id="photo_remove" onclick="removePhoto()"
+              style="position:absolute;top:6px;right:6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1">✕</button>
+    </div>
+  </div>
+
+  <!-- ── Additional Details ────────────────────────────────────────────────── -->
+  <div class="form-card form-section-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+      </div>
+      <span class="form-section-title">Additional Details <span style="font-weight:400;color:#9ca3af;font-size:0.8rem">(optional)</span></span>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
       <textarea id="description" name="description" rows="4"
-                placeholder="Describe what you saw — number of pests, exact location, any other details..."></textarea>
+                placeholder="Describe what you saw — number of pests, exact spot, droppings, entry points, or any other details..."></textarea>
     </div>
+  </div>
 
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Submit Sighting Report</button>
-      <a href="{{ url_for('sightings') }}" class="btn btn-secondary">Cancel</a>
-    </div>
+  <!-- ── Submit ────────────────────────────────────────────────────────────── -->
+  <div style="display:flex;gap:10px;margin-top:4px">
+    <button type="submit" class="btn btn-primary btn-block">Submit Sighting Report</button>
+  </div>
 
-  </form>
-</div>
+</form>
+
+<script>
+  document.getElementById('photo_input').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('photo_preview_img').src = e.target.result;
+      document.getElementById('photo_preview_wrap').style.display = 'block';
+      document.getElementById('photo_drop').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function removePhoto() {
+    document.getElementById('photo_input').value = '';
+    document.getElementById('photo_preview_wrap').style.display = 'none';
+    document.getElementById('photo_drop').style.display = 'block';
+  }
+</script>
 {% endblock %}

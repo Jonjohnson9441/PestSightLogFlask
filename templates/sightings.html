@@ -30,10 +30,12 @@
       <tr>
         <th>#</th>
         <th>Date</th>
+        <th>Time</th>
         <th>Pest Type</th>
         <th>Location</th>
         <th>Reported By</th>
         <th>Description</th>
+        <th>Photo</th>
         <th>Logged At</th>
       </tr>
     </thead>
@@ -42,10 +44,21 @@
       <tr>
         <td class="muted">{{ s.id }}</td>
         <td>{{ s.date }}</td>
+        <td class="muted">{{ s.sighting_time or '—' }}</td>
         <td><span class="pest-badge">{{ s.pest_type }}</span></td>
         <td>{{ s.location }}</td>
         <td>{{ s.reported_by_name }}</td>
         <td class="description-cell">{{ s.description or '—' }}</td>
+        <td>
+          {% if s.photo_filename %}
+          <a href="{{ url_for('uploaded_file', filename=s.photo_filename) }}" target="_blank">
+            <img src="{{ url_for('uploaded_file', filename=s.photo_filename) }}"
+                 style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb">
+          </a>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
         <td class="muted">{{ s.created_at.strftime('%b %d, %Y %I:%M %p') }}</td>
       </tr>
       {% endfor %}

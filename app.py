@@ -2,12 +2,14 @@
 # Main application file — contains all backend code for PestSightLog.
 # Run setup.py first to create the database and default admin account.
 
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
+import uuid
 
 # ── App Configuration ──────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -18,6 +20,15 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-secret-key-
 # SQLite database stored in the same folder as this file
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sightings.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Photo upload settings
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5 MB max
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ── Extensions Setup ───────────────────────────────────────────────────────────
 db = SQLAlchemy(app)
@@ -55,6 +66,8 @@ class Sighting(db.Model):
     pest_type         = db.Column(db.String(100), nullable=False)
     description       = db.Column(db.Text, nullable=True)
     reported_by_name  = db.Column(db.String(100), nullable=False)
+    sighting_time     = db.Column(db.String(10), nullable=True)
+    photo_filename    = db.Column(db.String(200), nullable=True)
     user_id           = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at        = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -110,22 +123,35 @@ def logout():
 def report():
     """Show the report form (GET) or save a new sighting (POST)."""
     if request.method == 'POST':
-        date             = request.form.get('date', '').strip()
-        location         = request.form.get('location', '').strip()
-        pest_type        = request.form.get('pest_type', '').strip()
-        description      = request.form.get('description', '').strip()
-        reported_by_name = request.form.get('reported_by', '').strip() or current_user.username
+        first_name    = request.form.get('first_name', '').strip()
+        last_name     = request.form.get('last_name', '').strip()
+        date          = request.form.get('date', '').strip()
+        sighting_time = request.form.get('sighting_time', '').strip()
+        location      = request.form.get('location', '').strip()
+        pest_type     = request.form.get('pest_type', '').strip()
+        description   = request.form.get('description', '').strip()
 
-        # Validate required fields
-        if not date or not location or not pest_type:
-            flash('Date, location, and pest type are all required.', 'error')
+        reported_by_name = f'{first_name} {last_name}'.strip() or current_user.username
+
+        if not date or not location or not pest_type or not first_name or not last_name:
+            flash('First name, last name, date, location, and pest type are all required.', 'error')
         else:
+            # Handle optional photo upload
+            photo_filename = None
+            photo_file = request.files.get('photo')
+            if photo_file and photo_file.filename and allowed_file(photo_file.filename):
+                ext = photo_file.filename.rsplit('.', 1)[1].lower()
+                photo_filename = f'{uuid.uuid4().hex}.{ext}'
+                photo_file.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+
             sighting = Sighting(
                 date=date,
+                sighting_time=sighting_time or None,
                 location=location,
                 pest_type=pest_type,
                 description=description,
                 reported_by_name=reported_by_name,
+                photo_filename=photo_filename,
                 user_id=current_user.id
             )
             db.session.add(sighting)
@@ -133,9 +159,9 @@ def report():
             flash('Sighting reported successfully!', 'success')
             return redirect(url_for('sightings'))
 
-    # Pre-fill today's date
     today = datetime.today().strftime('%Y-%m-%d')
-    return render_template('report.html', today=today)
+    now_time = datetime.now().strftime('%H:%M')
+    return render_template('report.html', today=today, now_time=now_time)
 
 
 @app.route('/sightings')
@@ -226,6 +252,54 @@ def delete_user(user_id):
         flash(f'User "{user.username}" deleted.', 'success')
 
     return redirect(url_for('manage_users'))
+
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    """Serve an uploaded photo."""
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+
+@app.route('/admin/users/<int:user_id>/set-password', methods=['POST'])
+@login_required
+def set_user_password(user_id):
+    """Admin-only: reset another user's password."""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('sightings'))
+    user = User.query.get_or_404(user_id)
+    new_password = request.form.get('new_password', '').strip()
+    if len(new_password) < 6:
+        flash('Password must be at least 6 characters.', 'error')
+    else:
+        user.set_password(new_password)
+        db.session.commit()
+        flash(f'Password for "{user.username}" has been updated.', 'success')
+    return redirect(url_for('manage_users'))
+
+
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Allow any logged-in user to change their own password."""
+    if request.method == 'POST':
+        current_pw = request.form.get('current_password', '')
+        new_pw     = request.form.get('new_password', '').strip()
+        confirm_pw = request.form.get('confirm_password', '').strip()
+
+        if not current_user.check_password(current_pw):
+            flash('Current password is incorrect.', 'error')
+        elif len(new_pw) < 6:
+            flash('New password must be at least 6 characters.', 'error')
+        elif new_pw != confirm_pw:
+            flash('New passwords do not match.', 'error')
+        else:
+            current_user.set_password(new_pw)
+            db.session.commit()
+            flash('Password changed successfully.', 'success')
+            return redirect(url_for('sightings'))
+
+    return render_template('change_password.html')
 
 
 # ── Entry Point ────────────────────────────────────────────────────────────────

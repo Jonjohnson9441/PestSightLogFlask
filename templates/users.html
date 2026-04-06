@@ -56,14 +56,27 @@
         </td>
         <td>{{ u.sightings|length }}</td>
         <td>
-          {% if u.id != current_user.id %}
-          <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}"
-                onsubmit="return confirm('Delete user {{ u.username }}? This cannot be undone.')">
-            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-          </form>
-          {% else %}
-          <span class="muted">— (you)</span>
-          {% endif %}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="togglePwForm({{ u.id }})">Reset Password</button>
+            {% if u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}"
+                  onsubmit="return confirm('Delete user {{ u.username }}? This cannot be undone.')">
+              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+            {% else %}
+            <span class="muted">(you)</span>
+            {% endif %}
+          </div>
+          <div id="pw-form-{{ u.id }}" style="display:none;margin-top:8px">
+            <form method="POST" action="{{ url_for('set_user_password', user_id=u.id) }}"
+                  style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <input type="password" name="new_password" placeholder="New password (min 6)" required
+                     style="padding:6px 10px;border:1.5px solid #d1d5db;border-radius:6px;font-size:0.85rem;width:200px">
+              <button type="submit" class="btn btn-primary btn-sm">Save</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="togglePwForm({{ u.id }})">Cancel</button>
+            </form>
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -71,4 +84,10 @@
   </table>
 </div>
 
+<script>
+function togglePwForm(userId) {
+  const el = document.getElementById('pw-form-' + userId);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
 {% endblock %}
