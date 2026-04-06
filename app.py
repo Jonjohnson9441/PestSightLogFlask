@@ -385,6 +385,21 @@ def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 
+@app.route('/admin/users/<int:user_id>/edit-name', methods=['POST'])
+@login_required
+def edit_user_name(user_id):
+    """Admin-only: update a user's first and last name."""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('sightings'))
+    user = User.query.get_or_404(user_id)
+    user.first_name = request.form.get('first_name', '').strip()
+    user.last_name  = request.form.get('last_name', '').strip()
+    db.session.commit()
+    flash(f'Name updated for "{user.username}".', 'success')
+    return redirect(url_for('manage_users'))
+
+
 @app.route('/admin/users/<int:user_id>/set-password', methods=['POST'])
 @login_required
 def set_user_password(user_id):
