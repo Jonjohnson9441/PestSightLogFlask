@@ -166,7 +166,7 @@ def dashboard():
         Sighting.due_date < today
     ).count()
 
-    recent = Sighting.query.order_by(Sighting.created_at.desc()).limit(10).all()
+    recent = Sighting.query.order_by(Sighting.created_at.desc()).limit(5).all()
 
     top_locations = (db.session.query(Sighting.location, func.count(Sighting.id).label('cnt'))
                      .filter(Sighting.created_at >= thirty_ago)
