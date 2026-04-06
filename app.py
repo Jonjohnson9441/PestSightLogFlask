@@ -12,6 +12,10 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func
 import os
 import uuid
+import re
+
+def valid_email(email):
+    return bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$', email))
 
 EASTERN = ZoneInfo('America/New_York')
 
@@ -505,6 +509,12 @@ def public_report():
         if not all([first_name, last_name, email, date_str, location, pest_type]):
             return render_template('public_report.html',
                                    error='Please fill in all required fields.',
+                                   today=date_str,
+                                   now_time=sighting_time)
+
+        if not valid_email(email):
+            return render_template('public_report.html',
+                                   error='Please enter a valid email address (e.g. name@example.com).',
                                    today=date_str,
                                    now_time=sighting_time)
 
