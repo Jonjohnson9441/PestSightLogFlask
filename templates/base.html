@@ -20,7 +20,7 @@
       {% if current_user.is_admin %}
       <a href="{{ url_for('manage_users') }}" class="{{ 'active' if request.endpoint == 'manage_users' }}">Manage Users</a>
       {% endif %}
-      <span class="nav-user">{{ current_user.username }}{% if current_user.is_admin %} &middot; Admin{% endif %}</span>
+      <span class="nav-user">{{ current_user.username }} &middot; {% if current_user.is_admin %}Admin{% else %}Technician{% endif %}</span>
       <a href="{{ url_for('change_password') }}" class="{{ 'active' if request.endpoint == 'change_password' }}">Change Password</a>
       <a href="{{ url_for('logout') }}" class="nav-logout">Sign Out</a>
     </div>
