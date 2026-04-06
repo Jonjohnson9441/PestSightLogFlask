@@ -43,6 +43,9 @@ with app.app_context():
         if 'owner_taken_at' not in existing:
             cursor.execute('ALTER TABLE sighting ADD COLUMN owner_taken_at DATETIME')
             print('Added owner_taken_at column.')
+        if 'due_date' not in existing:
+            cursor.execute('ALTER TABLE sighting ADD COLUMN due_date DATE')
+            print('Added due_date column.')
         conn.commit()
         conn.close()
 

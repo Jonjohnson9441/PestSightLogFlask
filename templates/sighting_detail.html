@@ -12,11 +12,15 @@
     <h2>Sighting #{{ sighting.id }} — {{ sighting.pest_type }}</h2>
     <p>{{ sighting.location }} &middot; {{ sighting.date }}{% if sighting.sighting_time %} at {{ sighting.sighting_time }}{% endif %}</p>
   </div>
-  <span class="status-badge status-{{ sighting.status }}" style="font-size:0.9rem;padding:6px 14px">
-    {% if sighting.status == 'open' %}Needs Action
-    {% elif sighting.status == 'in_progress' %}In Progress
-    {% else %}Completed{% endif %}
-  </span>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span class="status-badge status-{{ sighting.status }}" style="font-size:0.9rem;padding:6px 14px">
+      {% if sighting.status == 'open' %}Needs Action
+      {% elif sighting.status == 'in_progress' %}In Progress
+      {% else %}Completed{% endif %}
+    </span>
+    {% if sighting.is_overdue %}<span class="overdue-flag">Overdue</span>{% endif %}
+    <button onclick="window.print()" class="btn btn-secondary btn-sm no-print">&#128438; Print CAPA Record</button>
+  </div>
 </div>
 
 <div class="detail-grid">
@@ -38,6 +42,15 @@
       <div class="detail-field"><span class="detail-label">Logged At</span>
         <span class="muted">{{ sighting.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
       </div>
+      {% if sighting.due_date %}
+      <div class="detail-field">
+        <span class="detail-label">Due Date</span>
+        <span {% if sighting.is_overdue %}style="color:#dc2626;font-weight:700"{% endif %}>
+          {{ sighting.due_date.strftime('%b %d, %Y') }}
+          {% if sighting.is_overdue %} — Overdue{% endif %}
+        </span>
+      </div>
+      {% endif %}
       {% if sighting.photo_filename %}
       <div style="margin-top:12px">
         <div class="detail-label" style="margin-bottom:6px">Submitted Photo</div>
@@ -68,7 +81,14 @@
 
         {% if sighting.status == 'open' %}
         <form method="POST" action="{{ url_for('take_ownership', sighting_id=sighting.id) }}">
-          <button type="submit" class="btn btn-primary">Take Ownership</button>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+            <div>
+              <label style="font-size:0.78rem;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">Target Resolution Date</label>
+              <input type="date" name="due_date" min="{{ today }}"
+                     style="padding:7px 10px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.875rem;font-family:inherit">
+            </div>
+            <button type="submit" class="btn btn-primary">Take Ownership</button>
+          </div>
         </form>
 
         {% elif sighting.status == 'in_progress' %}

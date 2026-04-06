@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — PestSightLog{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Dashboard</h2>
+    <p>{{ today.strftime('%B %d, %Y') }}</p>
+  </div>
+  <a href="{{ url_for('report') }}" class="btn btn-primary">+ Report Sighting</a>
+</div>
+
+<!-- ── Stat Cards ──────────────────────────────────────────────────────────── -->
+<div class="stat-grid">
+  <a href="{{ url_for('sightings', status='open') }}" class="stat-card stat-open">
+    <div class="stat-value">{{ open_count }}</div>
+    <div class="stat-label">Needs Action</div>
+  </a>
+  <a href="{{ url_for('sightings', status='in_progress') }}" class="stat-card stat-progress">
+    <div class="stat-value">{{ in_progress_count }}</div>
+    <div class="stat-label">In Progress</div>
+  </a>
+  <a href="{{ url_for('sightings', status='open') }}" class="stat-card stat-overdue">
+    <div class="stat-value">{{ overdue_count }}</div>
+    <div class="stat-label">Overdue</div>
+  </a>
+  <a href="{{ url_for('sightings', status='completed') }}" class="stat-card stat-completed">
+    <div class="stat-value">{{ completed_count }}</div>
+    <div class="stat-label">Completed</div>
+  </a>
+</div>
+
+<!-- ── Main Grid ───────────────────────────────────────────────────────────── -->
+<div class="dash-grid">
+
+  <!-- Recent Sightings -->
+  <div class="form-card" style="padding:0;overflow:hidden">
+    <div style="padding:18px 20px 12px;border-bottom:1px solid #f3f4f6">
+      <h3 style="font-size:0.95rem;font-weight:700;color:#052818">Recent Sightings</h3>
+    </div>
+    {% if recent %}
+    <table class="sightings-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Pest / Location</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in recent %}
+        <tr>
+          <td class="muted" style="white-space:nowrap">{{ s.date }}</td>
+          <td>
+            <span class="pest-badge">{{ s.pest_type }}</span>
+            <div class="muted" style="margin-top:2px">{{ s.location }}</div>
+          </td>
+          <td>
+            <span class="status-badge status-{{ s.status }}">
+              {% if s.status == 'open' %}Needs Action
+              {% elif s.status == 'in_progress' %}In Progress
+              {% else %}Completed{% endif %}
+            </span>
+            {% if s.is_overdue %}<span class="overdue-flag">Overdue</span>{% endif %}
+          </td>
+          <td><a href="{{ url_for('sighting_detail', sighting_id=s.id) }}" class="btn btn-secondary btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="padding:12px 20px;border-top:1px solid #f3f4f6">
+      <a href="{{ url_for('sightings') }}" style="font-size:0.85rem;color:#0a4d2c;font-weight:600">View all sightings →</a>
+    </div>
+    {% else %}
+    <div style="padding:40px;text-align:center;color:#9ca3af;font-size:0.875rem">No sightings yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Trends -->
+  <div>
+
+    <!-- Top Locations -->
+    <div class="form-card" style="margin-bottom:16px">
+      <h3 style="font-size:0.95rem;font-weight:700;color:#052818;margin-bottom:16px">Top Locations <span style="font-weight:400;color:#9ca3af;font-size:0.8rem">(last 30 days)</span></h3>
+      {% if top_locations %}
+        {% set max_loc = top_locations[0].cnt %}
+        {% for row in top_locations %}
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px">
+            <span style="color:#374151;font-weight:500">{{ row.location }}</span>
+            <span class="muted">{{ row.cnt }}</span>
+          </div>
+          <div class="trend-bar-bg">
+            <div class="trend-bar" style="width:{{ (row.cnt / max_loc * 100)|round }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <p style="color:#9ca3af;font-size:0.875rem">No data for the last 30 days.</p>
+      {% endif %}
+    </div>
+
+    <!-- Top Pest Types -->
+    <div class="form-card">
+      <h3 style="font-size:0.95rem;font-weight:700;color:#052818;margin-bottom:16px">Top Pest Types <span style="font-weight:400;color:#9ca3af;font-size:0.8rem">(last 30 days)</span></h3>
+      {% if top_pests %}
+        {% set max_pest = top_pests[0].cnt %}
+        {% for row in top_pests %}
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px">
+            <span style="color:#374151;font-weight:500">{{ row.pest_type }}</span>
+            <span class="muted">{{ row.cnt }}</span>
+          </div>
+          <div class="trend-bar-bg">
+            <div class="trend-bar trend-bar-pest" style="width:{{ (row.cnt / max_pest * 100)|round }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <p style="color:#9ca3af;font-size:0.875rem">No data for the last 30 days.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

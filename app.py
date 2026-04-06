@@ -7,7 +7,8 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from sqlalchemy import func
 import os
 import uuid
 
@@ -79,6 +80,13 @@ class Sighting(db.Model):
     status            = db.Column(db.String(20), default='open', nullable=False)
     owner_id          = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     owner_taken_at    = db.Column(db.DateTime, nullable=True)
+    due_date          = db.Column(db.Date, nullable=True)
+
+    @property
+    def is_overdue(self):
+        return (self.status in ('open', 'in_progress')
+                and self.due_date is not None
+                and self.due_date < date.today())
     user_id           = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at        = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     reporter          = db.relationship('User', foreign_keys=[user_id], back_populates='sightings')
@@ -109,10 +117,50 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
-    """Root URL — send logged-in users to sightings, others to login."""
     if current_user.is_authenticated:
-        return redirect(url_for('sightings'))
+        return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
+
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    today      = date.today()
+    thirty_ago = datetime.utcnow() - timedelta(days=30)
+
+    open_count        = Sighting.query.filter_by(status='open').count()
+    in_progress_count = Sighting.query.filter_by(status='in_progress').count()
+    completed_count   = Sighting.query.filter_by(status='completed').count()
+    overdue_count     = Sighting.query.filter(
+        Sighting.status.in_(['open', 'in_progress']),
+        Sighting.due_date.isnot(None),
+        Sighting.due_date < today
+    ).count()
+
+    recent = Sighting.query.order_by(Sighting.created_at.desc()).limit(10).all()
+
+    top_locations = (db.session.query(Sighting.location, func.count(Sighting.id).label('cnt'))
+                     .filter(Sighting.created_at >= thirty_ago)
+                     .group_by(Sighting.location)
+                     .order_by(func.count(Sighting.id).desc())
+                     .limit(6).all())
+
+    top_pests = (db.session.query(Sighting.pest_type, func.count(Sighting.id).label('cnt'))
+                 .filter(Sighting.created_at >= thirty_ago)
+                 .group_by(Sighting.pest_type)
+                 .order_by(func.count(Sighting.id).desc())
+                 .limit(6).all())
+
+    return render_template('dashboard.html',
+        open_count=open_count,
+        in_progress_count=in_progress_count,
+        completed_count=completed_count,
+        overdue_count=overdue_count,
+        recent=recent,
+        top_locations=top_locations,
+        top_pests=top_pests,
+        today=today
+    )
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -231,7 +279,7 @@ def sightings():
 def sighting_detail(sighting_id):
     """Detail view for a single sighting with its CAPA trail."""
     sighting = Sighting.query.get_or_404(sighting_id)
-    return render_template('sighting_detail.html', sighting=sighting)
+    return render_template('sighting_detail.html', sighting=sighting, today=date.today())
 
 
 @app.route('/sightings/<int:sighting_id>/take-ownership', methods=['POST'])
@@ -239,9 +287,15 @@ def sighting_detail(sighting_id):
 def take_ownership(sighting_id):
     sighting = Sighting.query.get_or_404(sighting_id)
     if sighting.status == 'open':
+        due_str = request.form.get('due_date', '').strip()
         sighting.status         = 'in_progress'
         sighting.owner_id       = current_user.id
         sighting.owner_taken_at = datetime.utcnow()
+        if due_str:
+            try:
+                sighting.due_date = datetime.strptime(due_str, '%Y-%m-%d').date()
+            except ValueError:
+                pass
         db.session.commit()
         flash('You have taken ownership of this sighting.', 'success')
     return redirect(url_for('sighting_detail', sighting_id=sighting_id))

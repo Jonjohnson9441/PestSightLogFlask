@@ -67,11 +67,14 @@
         <td><span class="pest-badge">{{ s.pest_type }}</span></td>
         <td>{{ s.location }}</td>
         <td>{{ s.reported_by_name }}</td>
-        <td><span class="status-badge status-{{ s.status }}">
-          {% if s.status == 'open' %}Needs Action
-          {% elif s.status == 'in_progress' %}In Progress
-          {% else %}Completed{% endif %}
-        </span></td>
+        <td>
+          <span class="status-badge status-{{ s.status }}">
+            {% if s.status == 'open' %}Needs Action
+            {% elif s.status == 'in_progress' %}In Progress
+            {% else %}Completed{% endif %}
+          </span>
+          {% if s.is_overdue %}<span class="overdue-flag">Overdue</span>{% endif %}
+        </td>
         <td>
           {% if s.owner %}
             <span style="font-size:0.8rem">{{ s.owner.full_name }}</span>

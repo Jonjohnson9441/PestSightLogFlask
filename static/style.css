@@ -389,6 +389,160 @@ a:hover { text-decoration: underline; }
 
 .auth-body { padding: 28px 32px 32px; }
 
+/* ── Hamburger Nav (mobile) ───────────────────────────────────────────────── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.nav-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: rgba(255,255,255,0.85);
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+@media (max-width: 768px) {
+  .nav-hamburger { display: flex; }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: #052818;
+    flex-direction: column;
+    padding: 12px 16px 16px;
+    gap: 2px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .nav-links.open { display: flex; }
+
+  .nav-links a,
+  .nav-links .nav-user {
+    padding: 10px 12px;
+    border-radius: 6px;
+    width: 100%;
+  }
+
+  .nav-links .nav-user { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+
+  .navbar { position: relative; }
+
+  .container { padding: 20px 16px; }
+
+  .detail-grid { grid-template-columns: 1fr; }
+
+  .table-wrapper { font-size: 0.8rem; }
+}
+
+/* ── Dashboard ────────────────────────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 700px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.stat-card {
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); text-decoration: none; }
+
+.stat-value { font-size: 2.2rem; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+.stat-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; }
+
+.stat-open      { background: #fee2e2; color: #991b1b; }
+.stat-progress  { background: #fef3c7; color: #92400e; }
+.stat-overdue   { background: #fde8d8; color: #9a3412; }
+.stat-completed { background: #d1fae5; color: #065f46; }
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Trend Bars ───────────────────────────────────────────────────────────── */
+.trend-bar-bg {
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.trend-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0a4d2c, #0d7a4e);
+  border-radius: 4px;
+  transition: width 0.3s;
+  min-width: 4px;
+}
+
+.trend-bar-pest {
+  background: linear-gradient(90deg, #92400e, #d97706);
+}
+
+/* ── Overdue Flag ─────────────────────────────────────────────────────────── */
+.overdue-flag {
+  display: inline-block;
+  background: #fde8d8;
+  color: #9a3412;
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-left: 4px;
+}
+
+/* ── Print Styles ─────────────────────────────────────────────────────────── */
+@media print {
+  .navbar, .no-print, .form-actions, .btn, button { display: none !important; }
+
+  body { background: #fff; color: #000; font-size: 12pt; }
+
+  .container { padding: 0; max-width: 100%; }
+
+  .form-card { box-shadow: none; border: 1px solid #ccc; margin-bottom: 16px; }
+
+  .detail-grid { grid-template-columns: 1fr 1fr; }
+
+  .page-header h2 { font-size: 16pt; }
+
+  .capa-entry { page-break-inside: avoid; }
+
+  a { color: inherit; text-decoration: none; }
+
+  .status-badge, .pest-badge, .capa-type-badge, .overdue-flag { border: 1px solid #ccc; }
+}
+
 /* ── Status Tabs ──────────────────────────────────────────────────────────── */
 .status-tabs {
   display: flex;

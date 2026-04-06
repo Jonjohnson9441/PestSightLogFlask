@@ -14,9 +14,15 @@
       <span class="nav-logo">&#x26E8;</span>
       PestSightLog
     </div>
-    <div class="nav-links">
-      <a href="{{ url_for('sightings') }}" class="{{ 'active' if request.endpoint == 'sightings' }}">View Sightings</a>
-      <a href="{{ url_for('report') }}" class="{{ 'active' if request.endpoint == 'report' }}">Report Sighting</a>
+
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+
+    <div class="nav-links" id="nav-links">
+      <a href="{{ url_for('dashboard') }}"   class="{{ 'active' if request.endpoint == 'dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('sightings') }}"   class="{{ 'active' if request.endpoint == 'sightings' }}">Sightings</a>
+      <a href="{{ url_for('report') }}"      class="{{ 'active' if request.endpoint == 'report' }}">Report Sighting</a>
       {% if current_user.is_admin %}
       <a href="{{ url_for('manage_users') }}" class="{{ 'active' if request.endpoint == 'manage_users' }}">Manage Users</a>
       {% endif %}
@@ -29,7 +35,6 @@
 
   <div class="container">
 
-    <!-- Flash messages (success/error notifications) -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -41,6 +46,17 @@
     {% block content %}{% endblock %}
 
   </div>
+
+  <script>
+    const hamburger = document.getElementById('nav-hamburger');
+    const navLinks  = document.getElementById('nav-links');
+    if (hamburger) {
+      hamburger.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        hamburger.classList.toggle('open');
+      });
+    }
+  </script>
 
 </body>
 </html>
