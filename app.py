@@ -16,15 +16,20 @@ import re
 import socket
 
 def valid_email(email):
-    """Check email format and verify the domain actually exists via DNS."""
+    """Check email format and verify the domain (or its parent) exists via DNS.
+    Walks up subdomain levels so corporate addresses like user@purina.nestle.com
+    resolve via nestle.com."""
     if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$', email):
         return False
-    domain = email.split('@')[1]
-    try:
-        socket.getaddrinfo(domain, None)
-        return True
-    except socket.gaierror:
-        return False
+    parts = email.split('@')[1].lower().split('.')
+    for i in range(len(parts) - 1):
+        candidate = '.'.join(parts[i:])
+        try:
+            socket.getaddrinfo(candidate, None)
+            return True
+        except socket.gaierror:
+            continue
+    return False
 
 EASTERN = ZoneInfo('America/New_York')
 
