@@ -73,7 +73,7 @@ class Sighting(db.Model):
     owner_taken_at    = db.Column(db.DateTime, nullable=True)
     user_id           = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at        = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    reporter          = db.relationship('User', foreign_keys=[user_id], backref='sightings')
+    reporter          = db.relationship('User', foreign_keys=[user_id], back_populates='sightings')
     owner             = db.relationship('User', foreign_keys=[owner_id])
     capa_entries      = db.relationship('CAPAEntry', backref='sighting', lazy=True,
                                         order_by='CAPAEntry.created_at')
