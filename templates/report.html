@@ -46,11 +46,17 @@
     <div class="form-row">
       <div class="form-group">
         <label for="date">Date *</label>
-        <input type="date" id="date" name="date" value="{{ today }}" required>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="date" id="date" name="date" value="{{ today }}" required style="flex:1">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('date').value=new Date().toLocaleDateString('en-CA')">Today</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="sighting_time">Time *</label>
-        <input type="time" id="sighting_time" name="sighting_time" value="{{ now_time }}" required>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="time" id="sighting_time" name="sighting_time" value="{{ now_time }}" required style="flex:1">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="const n=new Date();document.getElementById('sighting_time').value=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')">Now</button>
+        </div>
       </div>
     </div>
   </div>
