@@ -96,6 +96,7 @@
             {% if current_user.is_admin %}
             <form method="POST" action="{{ url_for('delete_sighting', sighting_id=s.id) }}"
                   onsubmit="return confirm('Delete Sighting #{{ s.id }}? This cannot be undone.')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-danger btn-sm">Delete</button>
             </form>
             {% endif %}

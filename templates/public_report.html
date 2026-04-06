@@ -108,6 +108,7 @@
   {% endif %}
 
   <form method="POST" action="{{ url_for('public_report') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <!-- Your Information -->
     <div class="form-card form-section-card">

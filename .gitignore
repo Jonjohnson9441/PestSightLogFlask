@@ -1,0 +1,15 @@
+# Secret key — generated locally, never committed
+instance/.secret_key
+
+# Database
+instance/sightings.db
+
+# Uploaded photos
+static/uploads/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/

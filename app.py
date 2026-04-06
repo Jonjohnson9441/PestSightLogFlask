@@ -5,6 +5,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
@@ -14,6 +15,7 @@ import os
 import uuid
 import re
 import socket
+import secrets
 
 def valid_email(email):
     """Check email format and verify the domain (or its parent) exists via DNS.
@@ -36,8 +38,23 @@ EASTERN = ZoneInfo('America/New_York')
 # ── App Configuration ──────────────────────────────────────────────────────────
 app = Flask(__name__)
 
-# Secret key used to sign session cookies — change this in production
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-secret-key-before-deploying')
+# Secret key — loaded from a local file so it is never committed to version control.
+# On first run the file is created automatically with a random key.
+_key_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', '.secret_key')
+if os.environ.get('SECRET_KEY'):
+    app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
+else:
+    os.makedirs(os.path.dirname(_key_path), exist_ok=True)
+    if not os.path.exists(_key_path):
+        with open(_key_path, 'w') as _f:
+            _f.write(secrets.token_hex(32))
+    with open(_key_path) as _f:
+        app.config['SECRET_KEY'] = _f.read().strip()
+
+# Session cookie security
+app.config['SESSION_COOKIE_HTTPONLY']  = True
+app.config['SESSION_COOKIE_SAMESITE']  = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
 # SQLite database stored in the same folder as this file
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sightings.db'
@@ -54,11 +71,21 @@ def allowed_file(filename):
 
 # ── Extensions Setup ───────────────────────────────────────────────────────────
 db = SQLAlchemy(app)
+csrf = CSRFProtect(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'error'
+
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Frame-Options']        = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection']       = '1; mode=block'
+    response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
+    return response
 
 @app.template_filter('localtime')
 def localtime_filter(dt):
@@ -583,7 +610,8 @@ def delete_sighting(sighting_id):
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     """Serve an uploaded photo."""
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    safe_name = os.path.basename(filename)
+    return send_from_directory(UPLOAD_FOLDER, safe_name)
 
 
 @app.route('/admin/users/<int:user_id>/edit-name', methods=['POST'])
