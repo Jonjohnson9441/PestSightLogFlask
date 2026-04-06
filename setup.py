@@ -20,6 +20,14 @@ with app.app_context():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         existing = [row[1] for row in cursor.execute('PRAGMA table_info(sighting)').fetchall()]
+        user_cols = [row[1] for row in cursor.execute('PRAGMA table_info(user)').fetchall()]
+        if 'first_name' not in user_cols:
+            cursor.execute('ALTER TABLE user ADD COLUMN first_name VARCHAR(80)')
+            print('Added first_name column to user.')
+        if 'last_name' not in user_cols:
+            cursor.execute('ALTER TABLE user ADD COLUMN last_name VARCHAR(80)')
+            print('Added last_name column to user.')
+
         if 'sighting_time' not in existing:
             cursor.execute('ALTER TABLE sighting ADD COLUMN sighting_time VARCHAR(10)')
             print('Added sighting_time column.')

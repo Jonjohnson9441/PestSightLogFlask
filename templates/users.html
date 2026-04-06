@@ -15,7 +15,17 @@
   <form method="POST" action="{{ url_for('add_user') }}">
     <div class="form-row">
       <div class="form-group">
-        <label for="username">Username *</label>
+        <label for="first_name">First Name *</label>
+        <input type="text" id="first_name" name="first_name" placeholder="John" required>
+      </div>
+      <div class="form-group">
+        <label for="last_name">Last Name *</label>
+        <input type="text" id="last_name" name="last_name" placeholder="Smith" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="username">Username (for login) *</label>
         <input type="text" id="username" name="username" placeholder="e.g. jsmith" required>
       </div>
       <div class="form-group">
@@ -46,7 +56,10 @@
     <tbody>
       {% for u in users %}
       <tr>
-        <td><strong>{{ u.username }}</strong></td>
+        <td>
+          <strong>{{ u.full_name }}</strong>
+          <div class="muted">{{ u.username }}</div>
+        </td>
         <td>
           {% if u.is_admin %}
           <span class="badge badge-admin">Admin</span>

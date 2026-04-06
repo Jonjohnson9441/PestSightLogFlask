@@ -47,7 +47,15 @@ class User(UserMixin, db.Model):
     username      = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     is_admin      = db.Column(db.Boolean, default=False, nullable=False)
+    first_name    = db.Column(db.String(80), nullable=True)
+    last_name     = db.Column(db.String(80), nullable=True)
     sightings     = db.relationship('Sighting', foreign_keys='Sighting.user_id', back_populates='reporter', lazy=True)
+
+    @property
+    def full_name(self):
+        if self.first_name and self.last_name:
+            return f'{self.first_name} {self.last_name}'
+        return self.username
 
     def set_password(self, password):
         """Hash and store a password."""
@@ -328,18 +336,21 @@ def add_user():
         flash('Admin access required.', 'error')
         return redirect(url_for('sightings'))
 
-    username = request.form.get('username', '').strip()
-    password = request.form.get('password', '').strip()
-    is_admin = request.form.get('is_admin') == 'on'
+    username   = request.form.get('username', '').strip()
+    password   = request.form.get('password', '').strip()
+    first_name = request.form.get('first_name', '').strip()
+    last_name  = request.form.get('last_name', '').strip()
+    is_admin   = request.form.get('is_admin') == 'on'
 
-    if not username or not password:
-        flash('Username and password are required.', 'error')
+    if not username or not password or not first_name or not last_name:
+        flash('All fields are required.', 'error')
     elif User.query.filter_by(username=username).first():
         flash('That username is already taken.', 'error')
     elif len(password) < 6:
         flash('Password must be at least 6 characters.', 'error')
     else:
-        user = User(username=username, is_admin=is_admin)
+        user = User(username=username, is_admin=is_admin,
+                    first_name=first_name, last_name=last_name)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
