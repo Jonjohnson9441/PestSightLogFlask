@@ -180,10 +180,10 @@ def login():
         return redirect(url_for('sightings'))
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip().lower()
+        username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter(func.lower(User.username) == username.lower()).first()
 
         if user and user.check_password(password):
             login_user(user)
