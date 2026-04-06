@@ -288,15 +288,15 @@ def reopen_sighting(sighting_id):
 @app.route('/sightings/<int:sighting_id>/capa', methods=['POST'])
 @login_required
 def add_capa(sighting_id):
-    """Add a CAPA entry to a sighting."""
-    sighting    = Sighting.query.get_or_404(sighting_id)
-    entry_type  = request.form.get('entry_type', '').strip()
-    description = request.form.get('description', '').strip()
+    """Add CAPA entries to a sighting.
 
-    if not entry_type or not description:
-        flash('Entry type and description are required.', 'error')
-        return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+    form_type='response' creates up to 3 entries at once (CA + Root Cause + Preventive).
+    form_type='followup' creates a single Verification or Comment entry.
+    """
+    sighting  = Sighting.query.get_or_404(sighting_id)
+    form_type = request.form.get('form_type', 'followup')
 
+    # Handle optional photo (shared by both form types)
     photo_filename = None
     photo_file = request.files.get('photo')
     if photo_file and photo_file.filename and allowed_file(photo_file.filename):
@@ -304,16 +304,54 @@ def add_capa(sighting_id):
         photo_filename = f'{uuid.uuid4().hex}.{ext}'
         photo_file.save(os.path.join(UPLOAD_FOLDER, photo_filename))
 
-    entry = CAPAEntry(
-        sighting_id=sighting_id,
-        user_id=current_user.id,
-        entry_type=entry_type,
-        description=description,
-        photo_filename=photo_filename
-    )
-    db.session.add(entry)
-    db.session.commit()
-    flash('CAPA entry added.', 'success')
+    if form_type == 'response':
+        corrective = request.form.get('corrective', '').strip()
+        root_cause = request.form.get('root_cause', '').strip()
+        preventive = request.form.get('preventive', '').strip()
+
+        if not corrective:
+            flash('Corrective Action is required.', 'error')
+            return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+
+        added = 0
+        for entry_type, text in [
+            ('Corrective Action', corrective),
+            ('Root Cause',        root_cause),
+            ('Preventive Action', preventive),
+        ]:
+            if text:
+                entry = CAPAEntry(
+                    sighting_id=sighting_id,
+                    user_id=current_user.id,
+                    entry_type=entry_type,
+                    description=text,
+                    photo_filename=photo_filename if entry_type == 'Corrective Action' else None
+                )
+                db.session.add(entry)
+                added += 1
+
+        db.session.commit()
+        flash(f'CAPA response logged ({added} entr{"y" if added == 1 else "ies"} added).', 'success')
+
+    else:  # followup
+        entry_type  = request.form.get('entry_type', '').strip()
+        description = request.form.get('description', '').strip()
+
+        if not entry_type or not description:
+            flash('Entry type and description are required.', 'error')
+            return redirect(url_for('sighting_detail', sighting_id=sighting_id))
+
+        entry = CAPAEntry(
+            sighting_id=sighting_id,
+            user_id=current_user.id,
+            entry_type=entry_type,
+            description=description,
+            photo_filename=photo_filename
+        )
+        db.session.add(entry)
+        db.session.commit()
+        flash('Follow-up entry added.', 'success')
+
     return redirect(url_for('sighting_detail', sighting_id=sighting_id))
 
 
