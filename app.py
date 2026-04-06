@@ -180,7 +180,7 @@ def login():
         return redirect(url_for('sightings'))
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        username = request.form.get('username', '').strip().lower()
         password = request.form.get('password', '')
 
         user = User.query.filter_by(username=username).first()
@@ -445,7 +445,7 @@ def add_user():
         flash('Admin access required.', 'error')
         return redirect(url_for('sightings'))
 
-    username   = request.form.get('username', '').strip()
+    username   = request.form.get('username', '').strip().lower()
     password   = request.form.get('password', '').strip()
     first_name = request.form.get('first_name', '').strip()
     last_name  = request.form.get('last_name', '').strip()
