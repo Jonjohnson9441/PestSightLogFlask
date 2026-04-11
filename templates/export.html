@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Export Data — PestSightLog{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Export Data</h2>
+    <p>Download sighting records and photos filtered by date range and status.</p>
+  </div>
+</div>
+
+<div class="form-card" style="max-width:600px">
+
+  <h3 style="font-size:0.9rem;font-weight:700;color:#052818;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f3f4f6">
+    Filter Options
+  </h3>
+
+  <!-- Shared filter form — buttons submit to different endpoints -->
+  <div id="filter-block">
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="from_date">From Date</label>
+        <input type="date" id="from_date" name="from_date" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label for="to_date">To Date</label>
+        <input type="date" id="to_date" name="to_date" value="{{ today }}" style="width:100%">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label style="display:block;margin-bottom:8px">Status</label>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer">
+          <input type="checkbox" name="status" value="open" checked> Needs Action
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer">
+          <input type="checkbox" name="status" value="in_progress" checked> In Progress
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.9rem;font-weight:400;cursor:pointer">
+          <input type="checkbox" name="status" value="completed" checked> Completed
+        </label>
+      </div>
+    </div>
+
+  </div>
+
+  <hr style="border:none;border-top:1px solid #f3f4f6;margin:20px 0">
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+
+    <button onclick="doExport('/export/excel')" class="btn btn-primary">
+      &#128196; Download Excel
+    </button>
+
+    <button onclick="doExport('/export/photos')" class="btn btn-secondary">
+      &#128247; Download Photos (ZIP)
+    </button>
+
+  </div>
+
+  <p style="font-size:0.78rem;color:#9ca3af;margin-top:16px">
+    Excel includes two sheets: <strong>Sightings</strong> (one row per report) and <strong>CAPA Trail</strong>
+    (one row per entry). Photo columns contain clickable links.<br>
+    The ZIP file contains all photos organised by Sighting ID.
+  </p>
+
+</div>
+
+<script>
+function doExport(base) {
+  const from = document.getElementById('from_date').value;
+  const to   = document.getElementById('to_date').value;
+  const boxes = document.querySelectorAll('input[name="status"]:checked');
+  const params = new URLSearchParams();
+  if (from) params.append('from_date', from);
+  if (to)   params.append('to_date', to);
+  boxes.forEach(b => params.append('status', b.value));
+  window.location = base + '?' + params.toString();
+}
+</script>
+{% endblock %}

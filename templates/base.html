@@ -23,6 +23,7 @@
       <a href="{{ url_for('dashboard') }}"   class="{{ 'active' if request.endpoint == 'dashboard' }}">Dashboard</a>
       <a href="{{ url_for('sightings') }}"   class="{{ 'active' if request.endpoint == 'sightings' }}">Sightings</a>
       <a href="{{ url_for('report') }}"      class="{{ 'active' if request.endpoint == 'report' }}">Report Sighting</a>
+      <a href="{{ url_for('export') }}" class="{{ 'active' if request.endpoint == 'export' }}">Export</a>
       {% if current_user.is_admin %}
       <a href="{{ url_for('manage_users') }}" class="{{ 'active' if request.endpoint == 'manage_users' }}">Manage Users</a>
       {% endif %}

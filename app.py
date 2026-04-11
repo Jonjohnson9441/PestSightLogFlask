@@ -2,7 +2,7 @@
 # Main application file — contains all backend code for PestSightLog.
 # Run setup.py first to create the database and default admin account.
 
-from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, send_file
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
@@ -11,11 +11,18 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 from sqlalchemy import func
+from io import BytesIO
 import os
 import uuid
 import re
 import socket
 import secrets
+import zipfile
+import urllib.request
+import cloudinary
+import cloudinary.uploader
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 
 def valid_email(email):
     """Check email format and verify the domain (or its parent) exists via DNS.
@@ -68,6 +75,37 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Cloudinary — configured via environment variables set on the server.
+# If not configured, photos fall back to local storage.
+_cloudinary_configured = bool(
+    os.environ.get('CLOUDINARY_CLOUD_NAME') and
+    os.environ.get('CLOUDINARY_API_KEY') and
+    os.environ.get('CLOUDINARY_API_SECRET')
+)
+if _cloudinary_configured:
+    cloudinary.config(
+        cloud_name=os.environ['CLOUDINARY_CLOUD_NAME'],
+        api_key=os.environ['CLOUDINARY_API_KEY'],
+        api_secret=os.environ['CLOUDINARY_API_SECRET'],
+        secure=True
+    )
+
+def upload_photo(file_storage):
+    """Upload a photo and return a URL (Cloudinary) or filename (local).
+    Returns None if no file or invalid type."""
+    if not file_storage or not file_storage.filename or not allowed_file(file_storage.filename):
+        return None
+    if _cloudinary_configured:
+        result = cloudinary.uploader.upload(
+            file_storage, folder='pestsightlog', resource_type='image'
+        )
+        return result['secure_url']
+    else:
+        ext = file_storage.filename.rsplit('.', 1)[1].lower()
+        filename = f'{uuid.uuid4().hex}.{ext}'
+        file_storage.save(os.path.join(UPLOAD_FOLDER, filename))
+        return filename
 
 # ── Extensions Setup ───────────────────────────────────────────────────────────
 db = SQLAlchemy(app)
@@ -143,6 +181,15 @@ class Sighting(db.Model):
         return (self.status in ('open', 'in_progress')
                 and self.due_date is not None
                 and self.due_date < date.today())
+
+    @property
+    def photo_url(self):
+        if not self.photo_filename:
+            return None
+        if self.photo_filename.startswith('http'):
+            return self.photo_filename
+        return url_for('uploaded_file', filename=self.photo_filename)
+
     user_id           = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at        = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     reporter          = db.relationship('User', foreign_keys=[user_id], back_populates='sightings')
@@ -161,6 +208,14 @@ class CAPAEntry(db.Model):
     photo_filename = db.Column(db.String(200), nullable=True)
     created_at     = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     author         = db.relationship('User', foreign_keys=[user_id])
+
+    @property
+    def photo_url(self):
+        if not self.photo_filename:
+            return None
+        if self.photo_filename.startswith('http'):
+            return self.photo_filename
+        return url_for('uploaded_file', filename=self.photo_filename)
 
 
 # ── Flask-Login: how to load a user from their session ────────────────────────
@@ -267,13 +322,7 @@ def report():
         if not date or not location or not pest_type or not first_name or not last_name:
             flash('First name, last name, date, location, and pest type are all required.', 'error')
         else:
-            # Handle optional photo upload
-            photo_filename = None
-            photo_file = request.files.get('photo')
-            if photo_file and photo_file.filename and allowed_file(photo_file.filename):
-                ext = photo_file.filename.rsplit('.', 1)[1].lower()
-                photo_filename = f'{uuid.uuid4().hex}.{ext}'
-                photo_file.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+            photo_filename = upload_photo(request.files.get('photo'))
 
             sighting = Sighting(
                 date=date,
@@ -414,12 +463,7 @@ def add_capa(sighting_id):
     form_type = request.form.get('form_type', 'followup')
 
     # Handle optional photo (shared by both form types)
-    photo_filename = None
-    photo_file = request.files.get('photo')
-    if photo_file and photo_file.filename and allowed_file(photo_file.filename):
-        ext = photo_file.filename.rsplit('.', 1)[1].lower()
-        photo_filename = f'{uuid.uuid4().hex}.{ext}'
-        photo_file.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+    photo_filename = upload_photo(request.files.get('photo'))
 
     if form_type == 'response':
         corrective = request.form.get('corrective', '').strip()
@@ -559,12 +603,7 @@ def public_report():
                                    today=date_str,
                                    now_time=sighting_time)
 
-        photo_filename = None
-        photo_file = request.files.get('photo')
-        if photo_file and photo_file.filename and allowed_file(photo_file.filename):
-            ext = photo_file.filename.rsplit('.', 1)[1].lower()
-            photo_filename = f'{uuid.uuid4().hex}.{ext}'
-            photo_file.save(os.path.join(UPLOAD_FOLDER, photo_filename))
+        photo_filename = upload_photo(request.files.get('photo'))
 
         # Use the hidden system user for public submissions
         system_user = User.query.filter_by(username='_public_').first()
@@ -669,6 +708,148 @@ def change_password():
             return redirect(url_for('sightings'))
 
     return render_template('change_password.html')
+
+
+# ── Export Routes ──────────────────────────────────────────────────────────────
+
+@app.route('/export')
+@login_required
+def export():
+    return render_template('export.html', today=date.today())
+
+
+def _build_export_query():
+    """Build a Sighting query from request args (from_date, to_date, status)."""
+    from_date = request.args.get('from_date', '').strip()
+    to_date   = request.args.get('to_date', '').strip()
+    statuses  = request.args.getlist('status')
+
+    query = Sighting.query
+    if from_date:
+        query = query.filter(Sighting.date >= from_date)
+    if to_date:
+        query = query.filter(Sighting.date <= to_date)
+    if statuses:
+        query = query.filter(Sighting.status.in_(statuses))
+    return query.order_by(Sighting.date.desc()).all()
+
+
+@app.route('/export/excel')
+@login_required
+def export_excel():
+    sightings = _build_export_query()
+
+    wb = openpyxl.Workbook()
+    header_font = Font(bold=True, color='FFFFFF')
+    header_fill = PatternFill(fill_type='solid', fgColor='052818')
+    header_align = Alignment(horizontal='center')
+
+    # ── Sheet 1: Sightings ────────────────────────────────────────────────────
+    ws1 = wb.active
+    ws1.title = 'Sightings'
+    cols1 = ['ID', 'Date', 'Time', 'Pest Type', 'Location', 'Reported By',
+             'Email', 'Status', 'Owner', 'Due Date', 'Overdue', 'Description', 'Photo']
+    for c, h in enumerate(cols1, 1):
+        cell = ws1.cell(row=1, column=c, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+
+    for r, s in enumerate(sightings, 2):
+        ws1.cell(row=r, column=1,  value=s.id)
+        ws1.cell(row=r, column=2,  value=s.date)
+        ws1.cell(row=r, column=3,  value=s.sighting_time or '')
+        ws1.cell(row=r, column=4,  value=s.pest_type)
+        ws1.cell(row=r, column=5,  value=s.location)
+        ws1.cell(row=r, column=6,  value=s.reported_by_name)
+        ws1.cell(row=r, column=7,  value=s.reporter_email or '')
+        status_label = {'open': 'Needs Action', 'in_progress': 'In Progress',
+                        'completed': 'Completed'}.get(s.status, s.status)
+        ws1.cell(row=r, column=8,  value=status_label)
+        ws1.cell(row=r, column=9,  value=s.owner.full_name if s.owner else '')
+        ws1.cell(row=r, column=10, value=str(s.due_date) if s.due_date else '')
+        ws1.cell(row=r, column=11, value='Yes' if s.is_overdue else 'No')
+        ws1.cell(row=r, column=12, value=s.description or '')
+        if s.photo_url:
+            cell = ws1.cell(row=r, column=13, value=s.photo_url)
+            cell.hyperlink = s.photo_url
+            cell.font = Font(color='0563C1', underline='single')
+
+    # ── Sheet 2: CAPA Trail ───────────────────────────────────────────────────
+    ws2 = wb.create_sheet('CAPA Trail')
+    cols2 = ['Entry ID', 'Sighting ID', 'Date', 'Time', 'Entry Type',
+             'Author', 'Description', 'Photo']
+    for c, h in enumerate(cols2, 1):
+        cell = ws2.cell(row=1, column=c, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+
+    row = 2
+    for s in sightings:
+        for entry in s.capa_entries:
+            local_dt = entry.created_at.replace(tzinfo=ZoneInfo('UTC')).astimezone(EASTERN)
+            ws2.cell(row=row, column=1, value=entry.id)
+            ws2.cell(row=row, column=2, value=s.id)
+            ws2.cell(row=row, column=3, value=local_dt.strftime('%Y-%m-%d'))
+            ws2.cell(row=row, column=4, value=local_dt.strftime('%I:%M %p'))
+            ws2.cell(row=row, column=5, value=entry.entry_type)
+            ws2.cell(row=row, column=6, value=entry.author.full_name)
+            ws2.cell(row=row, column=7, value=entry.description)
+            if entry.photo_url:
+                cell = ws2.cell(row=row, column=8, value=entry.photo_url)
+                cell.hyperlink = entry.photo_url
+                cell.font = Font(color='0563C1', underline='single')
+            row += 1
+
+    # Auto-size columns
+    for ws in [ws1, ws2]:
+        for col in ws.columns:
+            width = max((len(str(cell.value or '')) for cell in col), default=0)
+            ws.column_dimensions[col[0].column_letter].width = min(width + 4, 60)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    filename = f'pestsightlog_{date.today()}.xlsx'
+    return send_file(output,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True, download_name=filename)
+
+
+@app.route('/export/photos')
+@login_required
+def export_photos():
+    sightings = _build_export_query()
+
+    output = BytesIO()
+    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for s in sightings:
+            def _add_photo(photo_ref, zip_path):
+                if not photo_ref:
+                    return
+                if photo_ref.startswith('http'):
+                    try:
+                        with urllib.request.urlopen(photo_ref, timeout=10) as resp:
+                            ext = photo_ref.split('.')[-1].split('?')[0][:5]
+                            zf.writestr(f'{zip_path}.{ext}', resp.read())
+                    except Exception:
+                        pass
+                else:
+                    local = os.path.join(UPLOAD_FOLDER, photo_ref)
+                    if os.path.exists(local):
+                        ext = photo_ref.rsplit('.', 1)[-1]
+                        zf.write(local, f'{zip_path}.{ext}')
+
+            _add_photo(s.photo_filename, f'sighting_{s.id}/sighting_photo')
+            for entry in s.capa_entries:
+                _add_photo(entry.photo_filename,
+                           f'sighting_{s.id}/capa_entry_{entry.id}_photo')
+
+    output.seek(0)
+    filename = f'pestsightlog_photos_{date.today()}.zip'
+    return send_file(output, mimetype='application/zip',
+                     as_attachment=True, download_name=filename)
 
 
 # ── Entry Point ────────────────────────────────────────────────────────────────

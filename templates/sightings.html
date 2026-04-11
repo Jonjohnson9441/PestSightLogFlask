@@ -83,9 +83,9 @@
           {% endif %}
         </td>
         <td>
-          {% if s.photo_filename %}
-          <a href="{{ url_for('uploaded_file', filename=s.photo_filename) }}" target="_blank">
-            <img src="{{ url_for('uploaded_file', filename=s.photo_filename) }}"
+          {% if s.photo_url %}
+          <a href="{{ s.photo_url }}" target="_blank">
+            <img src="{{ s.photo_url }}"
                  style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb">
           </a>
           {% else %}<span class="muted">—</span>{% endif %}

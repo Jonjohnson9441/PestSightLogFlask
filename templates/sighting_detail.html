@@ -56,11 +56,11 @@
         </span>
       </div>
       {% endif %}
-      {% if sighting.photo_filename %}
+      {% if sighting.photo_url %}
       <div style="margin-top:12px">
         <div class="detail-label" style="margin-bottom:6px">Submitted Photo</div>
-        <a href="{{ url_for('uploaded_file', filename=sighting.photo_filename) }}" target="_blank">
-          <img src="{{ url_for('uploaded_file', filename=sighting.photo_filename) }}"
+        <a href="{{ sighting.photo_url }}" target="_blank">
+          <img src="{{ sighting.photo_url }}"
                style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #e5e7eb">
         </a>
       </div>
@@ -156,9 +156,9 @@
             <span class="muted" style="font-size:0.75rem">{{ entry.author.full_name }} &middot; {{ entry.created_at | localtime }}</span>
           </div>
           <p class="capa-entry-text">{{ entry.description }}</p>
-          {% if entry.photo_filename %}
-          <a href="{{ url_for('uploaded_file', filename=entry.photo_filename) }}" target="_blank">
-            <img src="{{ url_for('uploaded_file', filename=entry.photo_filename) }}"
+          {% if entry.photo_url %}
+          <a href="{{ entry.photo_url }}" target="_blank">
+            <img src="{{ entry.photo_url }}"
                  style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #e5e7eb;margin-top:8px">
           </a>
           {% endif %}
