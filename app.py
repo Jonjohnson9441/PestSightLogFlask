@@ -776,31 +776,50 @@ def export_excel():
 
     # ── Sheet 2: CAPA Trail ───────────────────────────────────────────────────
     ws2 = wb.create_sheet('CAPA Trail')
-    cols2 = ['Entry ID', 'Sighting ID', 'Date', 'Time', 'Entry Type',
-             'Author', 'Description', 'Photo']
+    cols2 = ['Sighting ID', 'Pest Type', 'Location', 'Entry ID', 'Date', 'Time',
+             'Entry Type', 'Author', 'Description', 'Photo']
     for c, h in enumerate(cols2, 1):
         cell = ws2.cell(row=1, column=c, value=h)
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = header_align
 
+    # Alternating fill colours for each sighting group
+    fills = [
+        PatternFill(fill_type='solid', fgColor='F0F7F4'),  # light green
+        PatternFill(fill_type='solid', fgColor='FFFFFF'),  # white
+    ]
+
     row = 2
-    for s in sightings:
+    for group_idx, s in enumerate(sightings):
+        if not s.capa_entries:
+            continue
+        row_fill = fills[group_idx % 2]
         for entry in s.capa_entries:
             local_dt = entry.created_at.replace(tzinfo=ZoneInfo('UTC')).astimezone(EASTERN)
-            ws2.cell(row=row, column=1, value=entry.id)
-            ws2.cell(row=row, column=2, value=s.id)
-            ws2.cell(row=row, column=3, value=local_dt.strftime('%Y-%m-%d'))
-            ws2.cell(row=row, column=4, value=local_dt.strftime('%I:%M %p'))
-            ws2.cell(row=row, column=5, value=entry.entry_type)
-            ws2.cell(row=row, column=6, value=entry.author.full_name)
-            ws2.cell(row=row, column=7, value=entry.description)
+            values = [
+                s.id,
+                s.pest_type,
+                s.location,
+                entry.id,
+                local_dt.strftime('%Y-%m-%d'),
+                local_dt.strftime('%I:%M %p'),
+                entry.entry_type,
+                entry.author.full_name,
+                entry.description,
+            ]
+            for c, val in enumerate(values, 1):
+                cell = ws2.cell(row=row, column=c, value=val)
+                cell.fill = row_fill
             _url = _full_photo_url(entry.photo_filename)
             if _url:
-                cell = ws2.cell(row=row, column=8, value=_url)
+                cell = ws2.cell(row=row, column=10, value=_url)
                 cell.hyperlink = _url
                 cell.font = Font(color='0563C1', underline='single')
+                cell.fill = row_fill
             row += 1
+        # Blank divider row between sighting groups
+        row += 1
 
     # Auto-size columns
     for ws in [ws1, ws2]:
