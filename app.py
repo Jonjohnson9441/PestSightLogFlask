@@ -706,6 +706,16 @@ def export():
     return render_template('export.html', today=date.today())
 
 
+def _full_photo_url(photo_filename):
+    """Return a fully-qualified URL for a photo — works for both Cloudinary URLs
+    and old locally-stored filenames."""
+    if not photo_filename:
+        return None
+    if photo_filename.startswith('http'):
+        return photo_filename
+    return url_for('uploaded_file', filename=photo_filename, _external=True)
+
+
 def _build_export_query():
     """Build a Sighting query from request args (from_date, to_date, status)."""
     from_date = request.args.get('from_date', '').strip()
@@ -758,9 +768,10 @@ def export_excel():
         ws1.cell(row=r, column=10, value=str(s.due_date) if s.due_date else '')
         ws1.cell(row=r, column=11, value='Yes' if s.is_overdue else 'No')
         ws1.cell(row=r, column=12, value=s.description or '')
-        if s.photo_url:
-            cell = ws1.cell(row=r, column=13, value=s.photo_url)
-            cell.hyperlink = s.photo_url
+        _url = _full_photo_url(s.photo_filename)
+        if _url:
+            cell = ws1.cell(row=r, column=13, value=_url)
+            cell.hyperlink = _url
             cell.font = Font(color='0563C1', underline='single')
 
     # ── Sheet 2: CAPA Trail ───────────────────────────────────────────────────
@@ -784,9 +795,10 @@ def export_excel():
             ws2.cell(row=row, column=5, value=entry.entry_type)
             ws2.cell(row=row, column=6, value=entry.author.full_name)
             ws2.cell(row=row, column=7, value=entry.description)
-            if entry.photo_url:
-                cell = ws2.cell(row=row, column=8, value=entry.photo_url)
-                cell.hyperlink = entry.photo_url
+            _url = _full_photo_url(entry.photo_filename)
+            if _url:
+                cell = ws2.cell(row=row, column=8, value=_url)
+                cell.hyperlink = _url
                 cell.font = Font(color='0563C1', underline='single')
             row += 1
 
