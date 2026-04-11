@@ -821,8 +821,65 @@ def export_excel():
         # Blank divider row between sighting groups
         row += 1
 
+    # ── Sheet 3: CAPA Summary ────────────────────────────────────────────────
+    ws3 = wb.create_sheet('Summary')
+    cols3 = ['Sighting ID', 'Date', 'Pest Type', 'Location', 'Reported By',
+             'Status', 'Owner', 'Due Date', 'Overdue', 'Total CAPA Entries',
+             'Has Corrective Action', 'Has Root Cause', 'Has Preventive Action', 'Has Verification']
+    for c, h in enumerate(cols3, 1):
+        cell = ws3.cell(row=1, column=c, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+
+    overdue_fill  = PatternFill(fill_type='solid', fgColor='FEE2E2')  # light red
+    complete_fill = PatternFill(fill_type='solid', fgColor='D1FAE5')  # light green
+    progress_fill = PatternFill(fill_type='solid', fgColor='FEF9C3')  # light yellow
+
+    for r, s in enumerate(sightings, 2):
+        entry_types = {e.entry_type for e in s.capa_entries}
+        status_label = {'open': 'Needs Action', 'in_progress': 'In Progress',
+                        'completed': 'Completed'}.get(s.status, s.status)
+        values = [
+            s.id,
+            s.date,
+            s.pest_type,
+            s.location,
+            s.reported_by_name,
+            status_label,
+            s.owner.full_name if s.owner else '',
+            str(s.due_date) if s.due_date else '',
+            'Yes' if s.is_overdue else 'No',
+            len(s.capa_entries),
+            'Yes' if 'Corrective Action' in entry_types else 'No',
+            'Yes' if 'Root Cause'        in entry_types else 'No',
+            'Yes' if 'Preventive Action' in entry_types else 'No',
+            'Yes' if 'Verification'      in entry_types else 'No',
+        ]
+        if s.is_overdue:
+            row_fill = overdue_fill
+        elif s.status == 'completed':
+            row_fill = complete_fill
+        elif s.status == 'in_progress':
+            row_fill = progress_fill
+        else:
+            row_fill = PatternFill(fill_type='solid', fgColor='FFFFFF')
+
+        for c, val in enumerate(values, 1):
+            cell = ws3.cell(row=r, column=c, value=val)
+            cell.fill = row_fill
+
+    # AutoFilter on all sheets
+    ws1.auto_filter.ref = ws1.dimensions
+    ws2.auto_filter.ref = f'A1:{openpyxl.utils.get_column_letter(len(cols2))}1'
+    ws3.auto_filter.ref = ws3.dimensions
+
+    # Freeze header row on all sheets
+    for ws in [ws1, ws2, ws3]:
+        ws.freeze_panes = 'A2'
+
     # Auto-size columns
-    for ws in [ws1, ws2]:
+    for ws in [ws1, ws2, ws3]:
         for col in ws.columns:
             width = max((len(str(cell.value or '')) for cell in col), default=0)
             ws.column_dimensions[col[0].column_letter].width = min(width + 4, 60)
