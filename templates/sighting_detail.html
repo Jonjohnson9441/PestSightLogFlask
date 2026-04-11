@@ -209,7 +209,15 @@
         </div>
         <div class="form-group">
           <label>Photo <span class="optional">(optional)</span></label>
-          <input type="file" name="photo" accept="image/*" style="font-size:0.875rem;padding:6px 0">
+          <input type="hidden" name="photo_filename" id="photo_filename_response">
+          <div id="photo_btn_response">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openWidget('response')">&#128247; Attach Photo</button>
+          </div>
+          <div id="photo_preview_response" style="display:none;margin-top:8px;position:relative;display:inline-block">
+            <img id="photo_img_response" style="max-height:120px;border-radius:6px;border:1px solid #e5e7eb" alt="Preview">
+            <button type="button" onclick="removePhoto('response')"
+                    style="position:absolute;top:4px;right:4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1">✕</button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary">Save Initial Response</button>
       </form>
@@ -249,7 +257,15 @@
         </div>
         <div class="form-group">
           <label>Photo <span class="optional">(optional)</span></label>
-          <input type="file" name="photo" accept="image/*" style="font-size:0.875rem;padding:6px 0">
+          <input type="hidden" name="photo_filename" id="photo_filename_followup">
+          <div id="photo_btn_followup">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openWidget('followup')">&#128247; Attach Photo</button>
+          </div>
+          <div id="photo_preview_followup" style="display:none;margin-top:8px;position:relative;display:inline-block">
+            <img id="photo_img_followup" style="max-height:120px;border-radius:6px;border:1px solid #e5e7eb" alt="Preview">
+            <button type="button" onclick="removePhoto('followup')"
+                    style="position:absolute;top:4px;right:4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:1">✕</button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary">Add Entry</button>
       </form>
@@ -266,5 +282,39 @@
 
   </div>
 </div>
+
+{% block scripts %}
+<script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+<script>
+  {% if cloudinary_cloud_name and cloudinary_upload_preset %}
+  let _activeTarget = null;
+  const capaWidget = cloudinary.createUploadWidget({
+    cloudName: '{{ cloudinary_cloud_name }}',
+    uploadPreset: '{{ cloudinary_upload_preset }}',
+    folder: 'pestsightlog',
+    maxFileSize: 5242880,
+    sources: ['local', 'camera'],
+    multiple: false,
+    resourceType: 'image'
+  }, (error, result) => {
+    if (!error && result && result.event === 'success' && _activeTarget) {
+      document.getElementById('photo_filename_' + _activeTarget).value = result.info.secure_url;
+      document.getElementById('photo_img_' + _activeTarget).src = result.info.secure_url;
+      document.getElementById('photo_preview_' + _activeTarget).style.display = 'inline-block';
+      document.getElementById('photo_btn_' + _activeTarget).style.display = 'none';
+    }
+  });
+  function openWidget(target) { _activeTarget = target; capaWidget.open(); }
+  {% else %}
+  function openWidget() { alert('Photo upload is not configured.'); }
+  {% endif %}
+
+  function removePhoto(target) {
+    document.getElementById('photo_filename_' + target).value = '';
+    document.getElementById('photo_preview_' + target).style.display = 'none';
+    document.getElementById('photo_btn_' + target).style.display = 'block';
+  }
+</script>
+{% endblock %}
 
 {% endblock %}

@@ -19,8 +19,6 @@ import socket
 import secrets
 import zipfile
 import urllib.request
-import cloudinary
-import cloudinary.uploader
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
@@ -76,36 +74,15 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Cloudinary — configured via environment variables set on the server.
-# If not configured, photos fall back to local storage.
-_cloudinary_configured = bool(
-    os.environ.get('CLOUDINARY_CLOUD_NAME') and
-    os.environ.get('CLOUDINARY_API_KEY') and
-    os.environ.get('CLOUDINARY_API_SECRET')
-)
-if _cloudinary_configured:
-    cloudinary.config(
-        cloud_name=os.environ['CLOUDINARY_CLOUD_NAME'],
-        api_key=os.environ['CLOUDINARY_API_KEY'],
-        api_secret=os.environ['CLOUDINARY_API_SECRET'],
-        secure=True
-    )
-
 def upload_photo(file_storage):
-    """Upload a photo and return a URL (Cloudinary) or filename (local).
-    Returns None if no file or invalid type."""
+    """Save a photo locally (fallback when Cloudinary widget is not in use).
+    Returns a filename string, or None if no valid file."""
     if not file_storage or not file_storage.filename or not allowed_file(file_storage.filename):
         return None
-    if _cloudinary_configured:
-        result = cloudinary.uploader.upload(
-            file_storage, folder='pestsightlog', resource_type='image'
-        )
-        return result['secure_url']
-    else:
-        ext = file_storage.filename.rsplit('.', 1)[1].lower()
-        filename = f'{uuid.uuid4().hex}.{ext}'
-        file_storage.save(os.path.join(UPLOAD_FOLDER, filename))
-        return filename
+    ext = file_storage.filename.rsplit('.', 1)[1].lower()
+    filename = f'{uuid.uuid4().hex}.{ext}'
+    file_storage.save(os.path.join(UPLOAD_FOLDER, filename))
+    return filename
 
 # ── Extensions Setup ───────────────────────────────────────────────────────────
 db = SQLAlchemy(app)
@@ -115,6 +92,14 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'error'
+
+
+@app.context_processor
+def cloudinary_globals():
+    return {
+        'cloudinary_cloud_name':    os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+        'cloudinary_upload_preset': os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''),
+    }
 
 
 @app.after_request
@@ -322,7 +307,8 @@ def report():
         if not date or not location or not pest_type or not first_name or not last_name:
             flash('First name, last name, date, location, and pest type are all required.', 'error')
         else:
-            photo_filename = upload_photo(request.files.get('photo'))
+            photo_filename = (request.form.get('photo_filename', '').strip()
+                              or upload_photo(request.files.get('photo')))
 
             sighting = Sighting(
                 date=date,
@@ -331,7 +317,7 @@ def report():
                 pest_type=pest_type,
                 description=description,
                 reported_by_name=reported_by_name,
-                photo_filename=photo_filename,
+                photo_filename=photo_filename or None,
                 user_id=current_user.id
             )
             db.session.add(sighting)
@@ -462,8 +448,9 @@ def add_capa(sighting_id):
     sighting  = Sighting.query.get_or_404(sighting_id)
     form_type = request.form.get('form_type', 'followup')
 
-    # Handle optional photo (shared by both form types)
-    photo_filename = upload_photo(request.files.get('photo'))
+    # Handle optional photo (widget URL takes priority, falls back to file upload)
+    photo_filename = (request.form.get('photo_filename', '').strip()
+                      or upload_photo(request.files.get('photo'))) or None
 
     if form_type == 'response':
         corrective = request.form.get('corrective', '').strip()
@@ -603,7 +590,8 @@ def public_report():
                                    today=date_str,
                                    now_time=sighting_time)
 
-        photo_filename = upload_photo(request.files.get('photo'))
+        photo_filename = (request.form.get('photo_filename', '').strip()
+                          or upload_photo(request.files.get('photo'))) or None
 
         # Use the hidden system user for public submissions
         system_user = User.query.filter_by(username='_public_').first()

@@ -220,15 +220,17 @@
         </div>
         <span class="form-section-title">Photo <span style="font-weight:400;color:#9ca3af;font-size:0.8rem">(optional but helpful)</span></span>
       </div>
-      <div class="photo-drop-zone" id="photo_drop" onclick="document.getElementById('photo_input').click()">
-        <input type="file" id="photo_input" name="photo" accept="image/*" capture="environment" style="display:none">
-        <div class="drop-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36">
-            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
-          </svg>
+      <input type="hidden" name="photo_filename" id="photo_filename">
+      <div id="photo_btn_wrap">
+        <div class="photo-drop-zone" onclick="openPhotoWidget()" style="cursor:pointer">
+          <div class="drop-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <p class="drop-title">Take a photo or upload an image</p>
+          <p class="drop-sub">Click to select &nbsp;&mdash;&nbsp; max 5 MB</p>
         </div>
-        <p class="drop-title">Take a photo or upload an image</p>
-        <p class="drop-sub">Click to select &nbsp;&mdash;&nbsp; max 5 MB</p>
       </div>
       <div id="photo_preview_wrap" style="display:none;margin-top:12px;position:relative">
         <img id="photo_preview_img" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #e5e7eb" alt="Preview">
@@ -265,23 +267,34 @@
   <a href="{{ url_for('login') }}" style="color:#9ca3af">Staff Login</a>
 </div>
 
+<script src="https://upload-widget.cloudinary.com/global/all.js"></script>
 <script>
-  document.getElementById('photo_input').addEventListener('change', function() {
-    const file = this.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      document.getElementById('photo_preview_img').src = e.target.result;
+  {% if cloudinary_cloud_name and cloudinary_upload_preset %}
+  const photoWidget = cloudinary.createUploadWidget({
+    cloudName: '{{ cloudinary_cloud_name }}',
+    uploadPreset: '{{ cloudinary_upload_preset }}',
+    folder: 'pestsightlog',
+    maxFileSize: 5242880,
+    sources: ['local', 'camera'],
+    multiple: false,
+    resourceType: 'image'
+  }, (error, result) => {
+    if (!error && result && result.event === 'success') {
+      document.getElementById('photo_filename').value = result.info.secure_url;
+      document.getElementById('photo_preview_img').src = result.info.secure_url;
       document.getElementById('photo_preview_wrap').style.display = 'block';
-      document.getElementById('photo_drop').style.display = 'none';
-    };
-    reader.readAsDataURL(file);
+      document.getElementById('photo_btn_wrap').style.display = 'none';
+    }
   });
+  function openPhotoWidget() { photoWidget.open(); }
+  {% else %}
+  function openPhotoWidget() { alert('Photo upload is not configured.'); }
+  {% endif %}
 
   function removePhoto() {
-    document.getElementById('photo_input').value = '';
+    document.getElementById('photo_filename').value = '';
     document.getElementById('photo_preview_wrap').style.display = 'none';
-    document.getElementById('photo_drop').style.display = 'block';
+    document.getElementById('photo_btn_wrap').style.display = 'block';
   }
 </script>
 
